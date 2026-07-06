@@ -1,0 +1,203 @@
+name: Dependency Check
+
+on:
+  schedule:
+    # Executa toda segunda-feira às 9h (UTC)
+    - cron: "0 9 * * MON"
+
+  workflow_dispatch: # Permite trigger manual
+
+  pull_request: # Também roda em PRs
+    paths:
+      - "pyproject.toml"
+      - "requirements*.txt"
+      - ".github/workflows/dependency-check.yml"
+
+permissions:
+  contents: read
+  issues: write # Para criar issues de vulnerabilidades
+
+jobs:
+  check-dependencies:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências do projeto
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,security]"
+
+      - name: Instalar pip-audit
+        run: pip install pip-audit
+
+      - name: Verificar dependências desatualizadas
+        id: outdated
+        run: |
+          echo "## Dependências Desatualizadas" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Salvar JSON para artifact
+          pip list --outdated --format=json > outdated.json
+
+          # Processar usando script Python
+          chmod +x .github/scripts/process_outdated.py
+          OUTDATED_COUNT=$(python .github/scripts/process_outdated.py | head -1)
+          echo "count=$OUTDATED_COUNT" >> $GITHUB_OUTPUT
+
+          # Mostrar tabela no summary
+          if [ "$OUTDATED_COUNT" -gt 0 ]; then
+            echo "Encontrados **$OUTDATED_COUNT** pacote(s) desatualizado(s):" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Pacote | Versão Atual | Versão Mais Recente |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|--------------|---------------------|" >> $GITHUB_STEP_SUMMARY
+            python .github/scripts/process_outdated.py | tail -n +2 >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ Todas as dependências estão atualizadas!" >> $GITHUB_STEP_SUMMARY
+          fi
+        continue-on-error: true
+
+      - name: Executar pip-audit (CVE scan)
+        id: audit
+        run: |
+          echo "## Auditoria de Segurança (CVEs)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Executar audit e salvar resultados
+          pip-audit --format=json > audit.json || true
+
+          # Processar usando script Python
+          chmod +x .github/scripts/process_audit.py
+          python .github/scripts/process_audit.py >> $GITHUB_STEP_SUMMARY 2>&1 || echo "has_vulns=true" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-reports
+          path: |
+            outdated.json
+            audit.json
+          retention-days: 30
+
+      - name: Criar issue se vulnerabilidades críticas
+        if: steps.audit.outputs.has_vulns == 'true'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+
+            // Ler contagem de vulnerabilidades
+            let vulnCount = 0;
+            try {
+              vulnCount = parseInt(fs.readFileSync('vuln_count.txt', 'utf8'));
+            } catch (e) {
+              console.log('Erro ao ler vuln_count.txt:', e);
+            }
+
+            if (vulnCount === 0) {
+              console.log('Nenhuma vulnerabilidade, pulando criação de issue');
+              return;
+            }
+
+            // Ler audit.json para detalhes
+            let auditData = {};
+            try {
+              auditData = JSON.parse(fs.readFileSync('audit.json', 'utf8'));
+            } catch (e) {
+              console.log('Erro ao ler audit.json:', e);
+            }
+
+            const vulns = auditData.vulnerabilities || [];
+
+            // Criar corpo da issue
+            let issueBody = `## 🚨 Vulnerabilidades de Segurança Detectadas\n\n`;
+            issueBody += `**Workflow**: \`${context.workflow}\`\n`;
+            issueBody += `**Run**: [#${context.runNumber}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})\n`;
+            issueBody += `**Data**: ${new Date().toISOString().split('T')[0]}\n\n`;
+            issueBody += `---\n\n`;
+            issueBody += `### Resumo\n\n`;
+            issueBody += `Encontradas **${vulnCount}** vulnerabilidade(s) conhecida(s) nas dependências do projeto.\n\n`;
+
+            if (vulns.length > 0) {
+              issueBody += `### Vulnerabilidades\n\n`;
+              issueBody += `| Pacote | CVE | Severidade | Versão Afetada | Fix Disponível |\n`;
+              issueBody += `|--------|-----|------------|----------------|----------------|\n`;
+
+              vulns.slice(0, 10).forEach(v => {
+                const pkg = v.name || 'N/A';
+                const cve = v.id || 'N/A';
+                const severity = v.advisory?.severity || 'UNKNOWN';
+                const version = v.version || 'N/A';
+                const fix = v.fix_versions ? v.fix_versions.join(', ') : 'Não';
+                issueBody += `| ${pkg} | ${cve} | ${severity} | ${version} | ${fix} |\n`;
+              });
+
+              if (vulns.length > 10) {
+                issueBody += `\n*... e mais ${vulns.length - 10} vulnerabilidade(s). Ver artifacts para lista completa.*\n`;
+              }
+            }
+
+            issueBody += `\n---\n\n`;
+            issueBody += `### Ações Recomendadas\n\n`;
+            issueBody += `1. **Revisar vulnerabilidades** acima\n`;
+            issueBody += `2. **Atualizar pacotes críticos** (bandit, safety, pytest):\n`;
+            issueBody += `   \`\`\`bash\n`;
+            issueBody += `   make update-deps-safe\n`;
+            issueBody += `   \`\`\`\n`;
+            issueBody += `3. **Testar após atualização**:\n`;
+            issueBody += `   \`\`\`bash\n`;
+            issueBody += `   make test\n`;
+            issueBody += `   \`\`\`\n`;
+            issueBody += `4. **Atualizar todas as dependências** (opcional, cuidado):\n`;
+            issueBody += `   \`\`\`bash\n`;
+            issueBody += `   make update-deps\n`;
+            issueBody += `   \`\`\`\n\n`;
+            issueBody += `### Artifacts\n\n`;
+            issueBody += `- \`outdated.json\`: Lista de pacotes desatualizados\n`;
+            issueBody += `- \`audit.json\`: Relatório completo de CVEs\n\n`;
+            issueBody += `Download: [dependency-reports](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})\n`;
+
+            // Verificar se já existe issue aberta
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'security,dependencies,P0'
+            });
+
+            const existingIssue = issues.data.find(i =>
+              i.title.includes('Vulnerabilidades de Segurança') &&
+              i.title.includes(new Date().toISOString().split('T')[0].slice(0, 7)) // Mesmo mês
+            );
+
+            if (existingIssue) {
+              // Atualizar issue existente
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `## 🔄 Atualização do Scan\n\n${issueBody}`
+              });
+              console.log(`Issue existente atualizada: #${existingIssue.number}`);
+            } else {
+              // Criar nova issue
+              const issue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `🚨 Vulnerabilidades de Segurança — ${new Date().toISOString().split('T')[0]}`,
+                body: issueBody,
+                labels: ['security', 'dependencies', 'P0', 'automated']
+              });
+              console.log(`Nova issue criada: #${issue.data.number}`);
+            }

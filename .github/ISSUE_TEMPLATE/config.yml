@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 GitHub Discussions
+    url: https://github.com/enterprise-hermes-agent.git/discussions
+    about: Para discussões gerais, ideias e perguntas abertas
+  - name: 📖 Documentação
+    url: https://github.com/enterprise-hermes-agent.git#readme
+    about: Consulte nossa documentação completa
+  - name: 🔒 Relatar Vulnerabilidade de Segurança
+    url: https://github.com/enterprise-hermes-agent.git/security/advisories/new
+    about: PRIVADO - Para reportar vulnerabilidades de segurança

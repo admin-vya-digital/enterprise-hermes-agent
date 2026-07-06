@@ -1,0 +1,74 @@
+# GitGuardian configuration
+# https://docs.gitguardian.com/internal-repositories-monitoring/integrations/git_hooks/pre_commit
+
+version: 2
+
+# Paths to exclude from scanning
+paths-ignore:
+  - tests/**
+  - **/test_*.py
+  - **/conftest.py
+  - **/*_test.py
+  - docs/**/*.md
+  - docs/templates/**
+  - docs/guides/**
+  - docs/SESSIONS/**
+  - .github/templates/**
+  - README.md
+  - QUICKSTART.md
+  - CHANGELOG.md
+  - "**/*.example"
+  - "**/*.example.*"
+  - "**/example_*"
+  - "**/sample_*"
+  - retore/**
+
+# Match patterns to exclude (regex)
+matches-ignore:
+  # Test tokens with specific patterns
+  - name: Test GitHub Token
+    match: ghp_1234567890abcdefghijklmnopqrstuv1234
+
+  # Documentation placeholder tokens
+  - name: GitHub Token Placeholder
+    match: ghp_\.\.\.
+
+  # Example/test GitHub tokens (sequential chars)
+  - name: Example GitHub Token
+    match: ghp_0123456789abcdefghijklmnopqrstuvwxyz
+
+  # JWT tokens in test files
+  - name: Test JWT Token
+    match: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
+
+  # Generic test/example patterns
+  - name: Example credentials
+    match: (example|sample|test|mock|dummy|placeholder)_(key|token|password|secret|api)
+
+  - name: YOUR_ placeholders
+    match: YOUR_[A-Z_]+(KEY|TOKEN|PASSWORD|SECRET)
+
+  - name: REPLACE_WITH placeholders
+    match: REPLACE_WITH_YOUR_[A-Z_]+
+
+  # Environment variable references (not actual secrets)
+  - name: Environment Variable References
+    match: \$\{?[A-Z_]+_TOKEN\}?
+
+  - name: Bash Variable References
+    match: \$[A-Z_]+_(TOKEN|KEY|SECRET|PASSWORD)
+
+# Minimum occurrences before alerting
+# (helps reduce false positives for test data)
+minimum_occurrences: 1
+
+# Exclude specific secret types in specific paths
+exclude-secret-types:
+  - name: tests
+    paths:
+      - tests/**
+    types:
+      - github_token
+      - jwt
+      - generic_password
+      - aws_keys

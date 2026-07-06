@@ -1,0 +1,104 @@
+name: ✨ Feature Request
+description: Sugerir uma nova funcionalidade ou melhoria
+title: "[FEAT]: "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por sugerir uma melhoria! Queremos entender sua necessidade para criar a melhor solução possível.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 🎯 Problema ou Necessidade
+      description: Qual problema você está tentando resolver? Qual é o contexto?
+      placeholder: |
+        Exemplo: Atualmente, para fazer X eu preciso Y, mas seria muito mais produtivo se...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: 💡 Solução Proposta
+      description: Descreva como você imagina que essa funcionalidade deveria funcionar.
+      placeholder: |
+        Exemplo: Gostaria de ter um botão/comando que...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 🔄 Alternativas Consideradas
+      description: Você considerou outras abordagens ou soluções? Quais?
+      placeholder: Descreva outras formas de resolver o problema.
+    validations:
+      required: false
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: 📋 Exemplos de Uso
+      description: Forneça exemplos de como você usaria esta funcionalidade.
+      placeholder: |
+        ```python
+        # Exemplo de código ou uso
+        result = nova_funcionalidade(parametros)
+        ```
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: ⭐ Prioridade (para você)
+      description: Quão importante é esta funcionalidade para você?
+      options:
+        - "Crítico - Bloqueando meu trabalho"
+        - "Alto - Muito importante, mas tenho workaround"
+        - "Médio - Seria útil ter"
+        - "Baixo - Nice to have"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: 📊 Impacto Estimado
+      description: Quantas pessoas você acha que se beneficiariam?
+      options:
+        - "Alto - Maioria dos usuários"
+        - "Médio - Muitos usuários"
+        - "Baixo - Alguns usuários"
+        - "Específico - Caso de uso particular"
+    validations:
+      required: false
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: 🎨 Mockups/Wireframes
+      description: Se tiver, adicione imagens ou diagramas mostrando como você imagina a funcionalidade.
+      placeholder: Cole imagens ou links aqui.
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: ℹ️ Contexto Adicional
+      description: Qualquer outra informação relevante sobre a feature request.
+      placeholder: Links, referências, casos de uso detalhados, etc.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: ✔️ Checklist
+      description: Confirme que você verificou o seguinte
+      options:
+        - label: Procurei por feature requests similares e não encontrei duplicatas
+          required: true
+        - label: Esta feature alinha com o propósito do projeto
+          required: false
+        - label: Estou disposto a contribuir com a implementação (se possível)
+          required: false

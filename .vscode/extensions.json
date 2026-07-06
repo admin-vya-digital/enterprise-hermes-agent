@@ -1,0 +1,25 @@
+{
+  "recommendations": [
+    "EditorConfig.EditorConfig",
+    "KevinRose.vsc-python-indent",
+    "astral-sh.uv",
+    "christian-kohler.path-intellisense",
+    "donjayamanne.githistory",
+    "eamodio.gitlens",
+    "github.copilot",
+    "github.copilot-chat",
+    "mhutchie.git-graph",
+    "ms-python.black-formatter",
+    "ms-python.debugpy",
+    "ms-python.flake8",
+    "ms-python.isort",
+    "ms-python.mypy-type-checker",
+    "ms-python.pylance",
+    "ms-python.python",
+    "ms-vscode.live-server",
+    "njpwerner.autodocstring",
+    "streetsidesoftware.code-spell-checker",
+    "usernamehw.errorlens",
+    "yzhang.markdown-all-in-one"
+  ]
+}

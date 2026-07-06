@@ -1,0 +1,20 @@
+scaffold_version: 1.0.0
+created_at: '2026-07-06T12:07:01Z'
+updated_at: '2026-07-06T12:07:13Z'
+project:
+  name: enterprise-hermes-agent
+  title: Enterprise Hermes Agent
+  description: Enterprise projeto to use Hermes agent automation
+  domain: programming
+  language: python
+  github_repo: git@github.com:admin-vya-digital/enterprise-hermes-agent.git
+  ai_assistant: claude
+paths:
+  target_dir: /home/yves_marinho/Documentos/DevOps/Vya-Jobs/enterprise-hermes-agent
+  shared_dir: /home/yves_marinho/Documentos/DevOps/.copilot-shared
+profiles_applied:
+- devops-programming
+- python-fastapi
+- devops-security
+template_versions: {}
+template_bases: {}

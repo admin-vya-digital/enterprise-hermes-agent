@@ -1,0 +1,261 @@
+# Code Owners - enterprise-hermes-agent
+#
+# Este arquivo define os responsáveis por revisar mudanças em diferentes partes do código.
+# Quando um Pull Request modifica arquivos listados aqui, os owners serão automaticamente
+# solicitados para review.
+#
+# Sintaxe:
+# pattern @username @org/team-name email@domain.com
+#
+# Ordem de prioridade: última regra que match prevalece
+#
+# Documentação: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# ==============================================================================
+# Global Owners (fallback para arquivos sem owner específico)
+# ==============================================================================
+
+# Tudo que não tem regra específica vai para tech leads
+* @tech-lead
+
+# ==============================================================================
+# Documentação
+# ==============================================================================
+
+# Documentação geral
+/docs/ @tech-lead @documentation-team
+
+# README principal
+/README.md @tech-lead @product-owner
+
+# Contributing e Code of Conduct
+/CONTRIBUTING.md @tech-lead
+/CODE_OF_CONDUCT.md @tech-lead
+
+# Documentação de API
+/docs/api/ @backend-team @tech-lead
+
+# Guias de arquitetura
+/docs/architecture/ @architect @tech-lead
+
+# ==============================================================================
+# Configurações de Projeto
+# ==============================================================================
+
+# Package managers e dependências
+package.json @tech-lead @devops-team
+package-lock.json @tech-lead @devops-team
+requirements.txt @tech-lead @devops-team
+Pipfile @tech-lead @devops-team
+pyproject.toml @tech-lead @devops-team
+go.mod @tech-lead @devops-team
+Gemfile @tech-lead @devops-team
+
+# Configurações TypeScript/JavaScript
+tsconfig.json @frontend-team @tech-lead
+.eslintrc.* @frontend-team @tech-lead
+.prettierrc.* @frontend-team @tech-lead
+
+# Configurações Python (ruff substitui flake8 + black + isort; config em pyproject.toml)
+pyproject.toml @backend-team @tech-lead
+
+# Editor config
+.editorconfig @tech-lead
+.vscode/ @tech-lead
+
+# ==============================================================================
+# CI/CD e DevOps
+# ==============================================================================
+
+# GitHub Actions workflows
+/.github/workflows/ @devops-team @tech-lead
+
+# Docker
+Dockerfile @devops-team @tech-lead
+docker-compose.yml @devops-team @tech-lead
+.dockerignore @devops-team
+
+# Kubernetes
+/k8s/ @devops-team @sre-team
+/helm/ @devops-team @sre-team
+
+# Terraform / Infrastructure as Code
+/terraform/ @devops-team @sre-team
+/infrastructure/ @devops-team @sre-team
+
+# Scripts de deployment
+/scripts/deploy/ @devops-team @tech-lead
+
+# ==============================================================================
+# Segurança
+# ==============================================================================
+
+# Arquivos de segurança
+/SECURITY.md @security-team @tech-lead
+
+# Dependabot config
+/.github/dependabot.yml @security-team @devops-team
+
+# Secret scanning
+/.github/secret-scanning.yml @security-team
+
+# Security policies
+/.github/SECURITY.md @security-team @tech-lead
+
+# Authentication/Authorization
+/src/**/auth/ @security-team @backend-team
+/src/**/security/ @security-team @backend-team
+
+# ==============================================================================
+# Código Fonte
+# ==============================================================================
+
+# Backend
+/src/backend/ @backend-team
+/src/api/ @backend-team
+
+# Frontend
+/src/frontend/ @frontend-team
+/src/components/ @frontend-team
+/src/pages/ @frontend-team
+
+# Serviços compartilhados
+/src/shared/ @backend-team @frontend-team @tech-lead
+
+# Database migrations
+/migrations/ @backend-team @dba
+/src/database/ @backend-team @dba
+
+# ==============================================================================
+# Testes
+# ==============================================================================
+
+# Testes unitários seguem os owners do código fonte
+/tests/unit/backend/ @backend-team
+/tests/unit/frontend/ @frontend-team
+
+# Testes de integração
+/tests/integration/ @qa-team @backend-team
+
+# Testes E2E
+/tests/e2e/ @qa-team @frontend-team
+
+# Configuração de testes
+/jest.config.js @frontend-team @tech-lead
+/pytest.ini @backend-team @tech-lead
+
+# ==============================================================================
+# Configurações Específicas por Domínio
+# ==============================================================================
+
+# APIs públicas (require extra review)
+/src/api/public/ @backend-team @tech-lead @product-owner
+
+# Módulos críticos de pagamento
+/src/**/payment/ @backend-team @security-team @tech-lead
+
+# Módulos de notificação
+/src/**/notifications/ @backend-team
+
+# Módulos de relatórios
+/src/**/reports/ @backend-team @data-team
+
+# ==============================================================================
+# Build e Assets
+# ==============================================================================
+
+# Build configuration
+/webpack.config.js @frontend-team @devops-team
+/vite.config.js @frontend-team @devops-team
+/rollup.config.js @frontend-team @devops-team
+
+# Assets estáticos
+/public/ @frontend-team
+/static/ @frontend-team
+
+# ==============================================================================
+# Dados e Schemas
+# ==============================================================================
+
+# Database schemas
+/schemas/ @backend-team @dba @tech-lead
+
+# GraphQL schemas
+*.graphql @backend-team @frontend-team
+/schema.graphql @backend-team @frontend-team @tech-lead
+
+# OpenAPI/Swagger
+/openapi.yml @backend-team @tech-lead
+/swagger.yml @backend-team @tech-lead
+
+# ==============================================================================
+# Configurações de Ambiente
+# ==============================================================================
+
+# Environment variables (CUIDADO: nunca commitar secrets reais)
+.env.example @tech-lead @devops-team
+.env.template @tech-lead @devops-team
+
+# ==============================================================================
+# Git e GitHub
+# ==============================================================================
+
+# Git config
+.gitignore @tech-lead
+.gitattributes @tech-lead
+
+# GitHub config
+/.github/CODEOWNERS @tech-lead
+/.github/ISSUE_TEMPLATE/ @tech-lead @product-owner
+/.github/PULL_REQUEST_TEMPLATE.md @tech-lead
+
+# ==============================================================================
+# Licença e Legal
+# ==============================================================================
+
+/LICENSE @tech-lead @legal
+/COPYRIGHT @tech-lead @legal
+/NOTICE @tech-lead @legal
+
+# ==============================================================================
+# BREAKING CHANGES - Require Multiple Approvals
+# ==============================================================================
+
+# Mudanças em APIs públicas requerem múltiplos reviewers
+# (configure branch protection rules para exigir 2+ approvals para estes paths)
+
+# Core API contracts
+/src/api/v1/ @backend-team @tech-lead @product-owner
+
+# Database schema changes
+/migrations/*.sql @backend-team @dba @tech-lead
+
+# Authentication/Session management
+/src/**/auth/core/ @security-team @backend-team @tech-lead
+
+# ==============================================================================
+# NOTAS DE USO
+# ==============================================================================
+#
+# 1. Substitua @placeholders pelos usernames/teams reais do GitHub
+# 2. Configure branch protection rules para enforcar CODEOWNERS
+# 3. Para times, use formato: @org-name/team-name
+# 4. Para usuários, use formato: @username
+# 5. Emails também funcionam: developer@example.com
+#
+# Exemplo real:
+# /src/backend/ @john @acme-corp/backend-team backend-lead@acme.com
+#
+# ==============================================================================
+# MANUTENÇÃO
+# ==============================================================================
+#
+# - Revisar este arquivo a cada 3-6 meses
+# - Atualizar quando houver mudanças na estrutura do time
+# - Remover owners que saíram do projeto
+# - Adicionar novos módulos/features
+#
+# Última revisão: 2026-07-06
+# Responsável: @tech-lead
+#
+# ==============================================================================

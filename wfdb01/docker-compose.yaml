@@ -1,0 +1,49 @@
+services:
+
+  # --- Gateway do Hermes Agent ---
+  hermes:
+    image: nousresearch/hermes-agent:latest
+    container_name: hermes-agent
+    restart: unless-stopped
+    command: gateway run
+    volumes:
+      - ./data:/opt/data
+    expose:
+      - "8642" # Porta da API do gateway, exposta internamente na rede Docker
+    networks:
+      - app-network
+    # A configuração da chave de API é feita via setup inicial. Veja notas abaixo.
+
+  # --- Dashboard Web do Hermes Agent ---
+  dashboard:
+    image: nousresearch/hermes-agent:latest
+    container_name: hermes-dashboard
+    restart: unless-stopped
+    command: dashboard --host 0.0.0.0 --port 9119 --no-open
+    environment:
+      - GATEWAY_HEALTH_URL=http://hermes:8642
+    volumes:
+      - ./data:/opt/data
+    depends_on:
+      - hermes
+    networks:
+      - app-network
+    labels:
+      - 'traefik.http.routers.dashboard.rule=Host(`hermes.vya.digital`)'
+      - 'traefik.http.routers.dashboard.tls=true'
+      - 'traefik.http.routers.dashboard.entrypoints=websecure'
+      - 'traefik.http.routers.dashboard.tls.certresolver=lets-encrypt'
+      - 'traefik.http.middlewares.dashboard.headers.SSLRedirect=true'
+      - 'traefik.http.middlewares.dashboard.headers.STSSeconds=315360000'
+      - 'traefik.http.middlewares.dashboard.headers.browserXSSFilter=true'
+      - 'traefik.http.middlewares.dashboard.headers.contentTypeNosniff=true'
+      - 'traefik.http.middlewares.dashboard.headers.forceSTSHeader=true'
+      - 'traefik.http.middlewares.dashboard.headers.SSLHost=vya.digital'
+      - 'traefik.http.middlewares.dashboard.headers.STSIncludeSubdomains=true'
+      - 'traefik.http.middlewares.dashboard.headers.STSPreload=true'
+      - 'traefik.http.routers.dashboard.middlewares=dashboard@docker'
+      - "traefik.http.services.dashboard.loadbalancer.server.port=9119"
+
+networks:
+  app-network:
+    external: true

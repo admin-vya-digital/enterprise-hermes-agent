@@ -1,0 +1,114 @@
+name: 🐛 Bug Report
+description: Reportar um bug ou comportamento inesperado
+title: "[BUG]: "
+labels: ["bug", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por reportar este bug! Por favor, preencha as informações abaixo para nos ajudar a reproduzir e corrigir o problema.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 📝 Descrição do Bug
+      description: Descreva claramente o que aconteceu e o que você esperava que acontecesse.
+      placeholder: |
+        Exemplo: Ao clicar no botão X, esperava Y mas obtive Z.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 🔄 Passos para Reproduzir
+      description: Liste os passos necessários para reproduzir o problema.
+      placeholder: |
+        1. Acesse a página '...'
+        2. Clique em '...'
+        3. Role até '...'
+        4. Veja o erro
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: ✅ Comportamento Esperado
+      description: O que você esperava que acontecesse?
+      placeholder: Descreva o comportamento correto esperado.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: ❌ Comportamento Atual
+      description: O que realmente aconteceu?
+      placeholder: Descreva o que aconteceu.
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 📸 Screenshots/Logs
+      description: Se aplicável, adicione screenshots ou logs para ajudar a explicar o problema.
+      placeholder: Cole screenshots ou logs aqui.
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: 🔥 Severidade
+      description: Qual é a gravidade do bug?
+      options:
+        - "Crítico - Bloqueia trabalho/produção"
+        - "Alto - Funcionalidade importante não funciona"
+        - "Médio - Funcionalidade menor não funciona"
+        - "Baixo - Problema cosmético ou edge case"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 📦 Versão
+      description: Em qual versão você encontrou o bug?
+      placeholder: "Ex: v1.2.3 ou commit SHA"
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 🖥️ Ambiente
+      description: Descreva seu ambiente (OS, browser, versões, etc.)
+      placeholder: |
+        - OS: [ex: Ubuntu 22.04]
+        - Browser: [ex: Chrome 120]
+        - Node: [ex: v20.10.0]
+        - Python: [ex: 3.11.5]
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: ℹ️ Contexto Adicional
+      description: Adicione qualquer outro contexto sobre o problema.
+      placeholder: Qualquer informação adicional relevante.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: ✔️ Checklist
+      description: Confirme que você verificou o seguinte
+      options:
+        - label: Procurei por issues similares e não encontrei duplicatas
+          required: true
+        - label: Este bug é reproduzível consistentemente
+          required: false
+        - label: Incluí todas as informações necessárias acima
+          required: true

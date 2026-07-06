@@ -1,0 +1,95 @@
+name: 📚 Documentation
+description: Melhorias ou correções na documentação
+title: "[DOCS]: "
+labels: ["documentation", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por ajudar a melhorar nossa documentação!
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: 📝 Tipo de Melhoria
+      description: Que tipo de melhoria de documentação você está propondo?
+      options:
+        - "Correção - Erro ou informação incorreta"
+        - "Esclarecimento - Informação confusa ou ambígua"
+        - "Adição - Conteúdo faltando"
+        - "Exemplo - Falta de exemplos práticos"
+        - "Tradução - Problema de tradução"
+        - "Estrutura - Organização ou navegação"
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: 📍 Localização
+      description: Onde está a documentação que precisa de melhoria?
+      placeholder: "Ex: README.md linha 42, docs/guides/setup.md, API /users endpoint"
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: 📄 Conteúdo Atual
+      description: O que está escrito atualmente?
+      placeholder: |
+        Cole o trecho da documentação que precisa ser melhorado.
+    validations:
+      required: false
+
+  - type: textarea
+    id: issue
+    attributes:
+      label: ⚠️ Problema
+      description: Qual é o problema com a documentação atual?
+      placeholder: |
+        Exemplo: A instrução X não funciona, falta explicar Y, está desatualizado porque Z...
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: ✍️ Sugestão de Melhoria
+      description: Como você sugere que seja melhorado?
+      placeholder: |
+        Forneça o texto corrigido/melhorado ou uma descrição clara da mudança.
+    validations:
+      required: true
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: 💡 Exemplos
+      description: Se aplicável, forneça exemplos que deveriam ser incluídos.
+      placeholder: |
+        ```python
+        # Exemplo de código que deveria estar na documentação
+        ```
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: ℹ️ Contexto Adicional
+      description: Qualquer outra informação relevante.
+      placeholder: Screenshots, links, referências, etc.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: ✔️ Checklist
+      description: Confirme que você verificou o seguinte
+      options:
+        - label: Verifiquei que esta melhoria ainda não foi reportada
+          required: true
+        - label: A informação que estou fornecendo está correta
+          required: true
+        - label: Estou disposto a contribuir com a correção via PR (se possível)
+          required: false

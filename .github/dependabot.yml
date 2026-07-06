@@ -1,0 +1,27 @@
+version: 2
+
+updates:
+  # ─────────────────────────────────────────────────────────────
+  # GitHub Actions — todos os workflows
+  # ─────────────────────────────────────────────────────────────
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+
+  # ─────────────────────────────────────────────────────────────
+  # npm — template typescript-next
+  # ─────────────────────────────────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/.github/templates/typescript-next"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "template:typescript-next"

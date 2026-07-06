@@ -1,0 +1,143 @@
+# Criado em: 23/06/2026 18:55
+# Modificado em: 23/06/2026 18:55
+name: CI — Template Scaffold
+
+on:
+  pull_request:
+    paths:
+      - "scripts/**"
+      - "tests/**"
+      - "profile-descriptors/**"
+      - "template-bases/**"
+      - ".github/workflows/ci-template.yml"
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "scripts/**"
+      - "tests/**"
+      - "profile-descriptors/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests — Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]" || pip install pytest pyyaml rich
+
+      - name: Run full test suite
+        run: pytest tests/ -v --tb=short
+
+  cli-smoke:
+    name: CLI Smoke Tests
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]" || pip install pyyaml rich
+
+      - name: Smoke — list profiles
+        run: python scripts/scaffold.py --list-profiles --json
+
+      - name: Smoke — dry run
+        run: |
+          python scripts/scaffold.py --new --dry-run \
+            --name smoke-test \
+            --domain programming \
+            --language python
+
+      - name: Smoke — publish
+        run: python scripts/scaffold.py --publish --json
+
+      - name: Smoke — verify SBOM targets in Layer 2 profiles
+        run: |
+          for profile in python-fastapi python-flask typescript-next; do
+            makefile=".github/templates/${profile}/Makefile"
+            if [ -f "$makefile" ]; then
+              grep -q "^sbom:" "$makefile" && echo "OK: sbom target found in $profile/Makefile" \
+                || echo "WARNING: sbom target missing in $profile/Makefile"
+            else
+              echo "INFO: $makefile not found (profile may not include Makefile)"
+            fi
+          done
+
+  lint:
+    name: Lint & Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml
+
+      - name: Compile scaffold.py (syntax check)
+        run: python -m py_compile scripts/scaffold.py && echo "scaffold.py OK"
+
+      - name: Validate profile-descriptors YAML
+        run: |
+          python - <<'EOF'
+          import sys
+          import yaml
+          from pathlib import Path
+
+          errors = []
+          for f in Path("profile-descriptors").glob("*.yaml"):
+              try:
+                  data = yaml.safe_load(f.read_text(encoding="utf-8"))
+                  if not isinstance(data, dict):
+                      errors.append(f"{f}: não é um dict")
+              except yaml.YAMLError as e:
+                  errors.append(f"{f}: {e}")
+
+          if errors:
+              for err in errors:
+                  print(f"ERRO: {err}", file=sys.stderr)
+              sys.exit(1)
+          print(f"OK: {len(list(Path('profile-descriptors').glob('*.yaml')))} profile-descriptors validados")
+          EOF

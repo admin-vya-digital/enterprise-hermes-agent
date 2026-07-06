@@ -1,0 +1,325 @@
+# objetivo.yaml — Universal Spec-Driven Design Prerequisites Manifest
+# =============================================================================
+# Propósito:
+# - Artefato raiz (arquivo único) que guia constitution/specify/plan.
+# - Fornecer contexto, restrições, pré-requisitos e decisões iniciais.
+# - Incluir perguntas orientadoras (gates) para reduzir ambiguidade.
+#
+# Regras de uso:
+# - Este arquivo deve ser versionado.
+# - Campos "unknown" devem ser tratados como dívida de especificação.
+# - Segredos/credenciais NÃO devem existir aqui (somente referências).
+schema:
+  name: "objective-manifest"
+  version: "1.0"
+  last_updated: "2026-03-26"
+  authors:
+    - "yvesmarinho"
+
+# -----------------------------------------------------------------------------
+# 1) Identidade do projeto
+# -----------------------------------------------------------------------------
+project:
+  name: "enterprise-hermes-agent"
+  codename: ""
+  domain: "agnostic" # ex: software, infra, hardware, eletricidade, data, research
+  summary: "Enterprise projeto to use Hermes agent automation"
+  problem_statement: "Enterprise projeto to use Hermes agent automation"
+  success_statement: "CHANGE_ME (como saberemos que deu certo?)"
+  docstyle: "Google Style Guide (https://google.github.io/styleguide/) - multi-language documentation standards"
+
+stakeholders:
+  owner:
+    team_or_person: "enterprise-hermes-agent team"
+    contact: ""
+  users_personas:
+    - name: "PrimaryUser"
+      description: "Quem usa e como usa."
+  reviewers:
+    - "tech_lead"
+    - "security"
+    - "ops"
+  decision_makers:
+    - "enterprise-hermes-agent owner"
+
+# -----------------------------------------------------------------------------
+# 2) Escopo e fronteiras (para evitar creep)
+# -----------------------------------------------------------------------------
+scope:
+  in_scope:
+    - "enterprise-hermes-agent owner"
+  out_of_scope:
+    - "enterprise-hermes-agent owner"
+  assumptions:
+    - "enterprise-hermes-agent owner"
+  constraints:
+    # Triângulo de ferro: tempo/custo/escopo/qualidade
+    timeline:
+      target_date: "unknown"
+      hard_deadline: false
+    budget:
+      max_budget: "unknown"
+      currency: "USD"
+    risk_tolerance: "medium" # low|medium|high
+    change_policy:
+      mode: "brownfield" # greenfield|brownfield
+      principles:
+        - "minimize_disruption"
+        - "backward_compatible_when_possible"
+      rebuild_allowed: "unknown" # true|false|unknown
+
+# -----------------------------------------------------------------------------
+# 3) Estado atual (brownfield context) e inventário de base existente
+# -----------------------------------------------------------------------------
+current_state:
+  description: "unknown"
+  existing_assets:
+    repos:
+      - url: ""
+        notes: ""
+    systems_services:
+      - name: ""
+        owner: ""
+        notes: ""
+    hardware_components:
+      - name: ""
+        model: ""
+        notes: ""
+    facilities_electrical:
+      - name: ""
+        standards: ""
+        notes: ""
+  known_pain_points:
+    - "unknown"
+  known_constraints:
+    - "unknown"
+
+# -----------------------------------------------------------------------------
+# 4) Pré-requisitos e dependências (HARD vs SOFT)
+# -----------------------------------------------------------------------------
+prerequisites:
+  hard:
+    - id: "access_or_permissions"
+      description: "Acessos/permissões necessários para começar."
+      status: "unknown" # ready|blocked|unknown
+      evidence: "" # link/commit/ticket
+    - id: "tools_environment"
+      description: "Ferramentas/ambiente mínimo (SO, compilador, runtime, etc.)."
+      status: "unknown"
+      evidence: ""
+  soft:
+    - id: "nice_to_have_tooling"
+      description: "Ferramentas recomendadas."
+      status: "unknown"
+      evidence: ""
+
+dependencies:
+  internal:
+    - name: "unknown"
+      type: "service|team|repo|hardware|facility|process"
+      criticality: "unknown" # low|medium|high|unknown
+      notes: ""
+  external:
+    - name: "unknown"
+      type: "vendor|standard|library|api|regulation"
+      criticality: "unknown"
+      notes: ""
+
+# -----------------------------------------------------------------------------
+# 5) Requisitos funcionais e não-funcionais (agnóstico)
+# -----------------------------------------------------------------------------
+requirements:
+  functional:
+    - "unknown"
+  non_functional:
+    security:
+      classification: "unknown" # public|internal|confidential|restricted|unknown
+      secrets_policy: "no_secrets_in_repo"
+      threat_model_required: true
+      authn_authz: "unknown" # none|basic|oauth|mtls|physical_access|unknown
+      audit_logging_required: "unknown"
+    reliability:
+      availability_target: "unknown" # ex: 99.9%
+      rpo: "unknown"
+      rto: "unknown"
+      backup_required: "unknown"
+    performance:
+      latency_p95: "unknown"
+      throughput: "unknown"
+      resource_limits: "unknown"
+    maintainability:
+      documentation_required: true
+      test_coverage_target: "unknown"
+      coding_standards: "unknown"
+    compliance:
+      regulations:
+        - "unknown" # ex: LGPD, SOC2, ISO27001, IEC, ABNT, etc.
+    usability:
+      accessibility: "unknown"
+    portability:
+      platforms:
+        - "unknown" # linux, windows, embedded, mobile, etc.
+
+# -----------------------------------------------------------------------------
+# 6) Interface e integrações (agnóstico: API, UI, CLI, hardware IO)
+# -----------------------------------------------------------------------------
+interfaces:
+  user_interface:
+    type: "unknown" # none|web|mobile|desktop|hmi|unknown
+    notes: ""
+  programmatic_interface:
+    type: "unknown" # none|rest|grpc|mqtt|modbus|canbus|serial|unknown
+    versioning: "unknown"
+    backwards_compatibility_required: "unknown"
+  data_interfaces:
+    inputs:
+      - name: "unknown"
+        format: "unknown" # json,yaml,csv,sql,binary,etc.
+        notes: ""
+    outputs:
+      - name: "unknown"
+        format: "unknown"
+        notes: ""
+  integrations:
+    - name: "unknown"
+      direction: "inbound|outbound|bidirectional|unknown"
+      protocol: "unknown"
+      auth: "unknown"
+      notes: ""
+
+# -----------------------------------------------------------------------------
+# 7) Dados (opcional, agnóstico)
+# -----------------------------------------------------------------------------
+data:
+  model_required: "unknown"
+  data_sources:
+    - name: "unknown"
+      type: "db|files|api|sensors|manual|unknown"
+      quality_expectations: "unknown"
+  data_retention:
+    retention_period: "unknown"
+    deletion_policy: "unknown"
+
+# -----------------------------------------------------------------------------
+# 8) Entregáveis (documentos/artefatos) — não é tarefa, é “contrato de saída”
+# -----------------------------------------------------------------------------
+deliverables:
+  required:
+    - "constitution"
+    - "specification"
+    - "plan"
+    - "risk_register"
+    - "readme_or_runbook"
+  optional:
+    - "architecture_diagrams"
+    - "threat_model"
+    - "test_plan"
+    - "migration_plan"
+
+# -----------------------------------------------------------------------------
+# 9) Regras de implementação (variável por projeto)
+# -----------------------------------------------------------------------------
+implementation_rules:
+  error_handling_policy:
+    applies: "unknown" # always|by_module|by_layer|unknown
+    default_behavior: "unknown"
+    notes: >
+      Exemplo: "Em libs internas retornar False; em CLI usar exit codes;
+      em API levantar exceptions e mapear para HTTP codes."
+  parameter_validation:
+    required: true
+    strict_typing: "unknown" # true|false|unknown
+  documentation:
+    required: true
+    style: "reStructuredText" # pode ser alterado por projeto
+    doctest_required: "unknown"
+  testing:
+    required: true
+    strategy: "unknown" # unit|integration|e2e|hardware_in_loop|unknown
+  coding_patterns:
+    - "unknown" # ex: factory, repository, observer, strategy, singleton
+
+# -----------------------------------------------------------------------------
+# 10) Gates: perguntas orientadoras (o motor do Spec-Driven Design)
+# -----------------------------------------------------------------------------
+gates:
+  mode: "blocking" # blocking|non_blocking
+  questions:
+    # A) Problema e objetivos
+    - id: "goal_001"
+      category: "goals"
+      question: "Qual é o resultado mensurável (métricas) que define sucesso?"
+      expected_answer_type: "text"
+      required: true
+      current_answer: "unknown"
+    - id: "goal_002"
+      category: "scope"
+      question: "O que explicitamente NÃO será feito (out-of-scope) nesta fase?"
+      expected_answer_type: "list"
+      required: true
+      current_answer: ["unknown"]
+
+    # B) Contexto / brownfield
+    - id: "ctx_001"
+      category: "current_state"
+      question: "Quais ativos existentes NÃO podem ser quebrados (compatibilidade / contratos)?"
+      expected_answer_type: "list"
+      required: true
+      current_answer: ["unknown"]
+    - id: "ctx_002"
+      category: "change_policy"
+      question: "Rebuild do core é permitido? Se sim, em quais partes e sob quais condições?"
+      expected_answer_type: "text"
+      required: true
+      current_answer: "unknown"
+
+    # C) Pré-requisitos e dependências
+    - id: "pre_001"
+      category: "prerequisites"
+      question: "Quais acessos/permissões/recursos são necessários para iniciar (e quem aprova)?"
+      expected_answer_type: "text"
+      required: true
+      current_answer: "unknown"
+    - id: "dep_001"
+      category: "dependencies"
+      question: "Quais dependências internas/externas são críticas e quais são os riscos de atraso?"
+      expected_answer_type: "text"
+      required: true
+      current_answer: "unknown"
+
+    # D) Qualidade, segurança, compliance
+    - id: "sec_001"
+      category: "security"
+      question: "Qual a classificação dos dados e quais requisitos mínimos de segurança (auth, auditoria, criptografia)?"
+      expected_answer_type: "text"
+      required: true
+      current_answer: "unknown"
+    - id: "nfr_001"
+      category: "reliability"
+      question: "Qual disponibilidade/continuidade é necessária (SLA/SLO, RPO/RTO)?"
+      expected_answer_type: "text"
+      required: false
+      current_answer: "unknown"
+
+    # E) Interfaces (API/UI/Hardware)
+    - id: "if_001"
+      category: "interfaces"
+      question: "Quais interfaces existem/serão expostas (UI, CLI, API, serial, MQTT etc.) e seus contratos?"
+      expected_answer_type: "text"
+      required: true
+      current_answer: "unknown"
+
+    # F) Entregáveis
+    - id: "deliv_001"
+      category: "deliverables"
+      question: "Quais documentos/artefatos são obrigatórios no final (constitution/spec/plan/runbook)?"
+      expected_answer_type: "list"
+      required: true
+      current_answer:
+        [
+          "constitution",
+          "specification",
+          "plan",
+          "risk_register",
+          "readme_or_runbook",
+        ]

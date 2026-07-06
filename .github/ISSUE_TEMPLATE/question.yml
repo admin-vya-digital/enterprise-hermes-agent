@@ -1,0 +1,87 @@
+name: ❓ Question
+description: Fazer uma pergunta ou pedir ajuda
+title: "[QUESTION]: "
+labels: ["question", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tem uma pergunta? Estamos aqui para ajudar!
+
+        **Nota**: Para questões técnicas complexas, considere usar as [Discussions](../../discussions) ao invés de issues.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: ❓ Sua Pergunta
+      description: Descreva sua pergunta de forma clara e concisa.
+      placeholder: |
+        Seja específico sobre o que você quer saber ou fazer.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: 📝 Contexto
+      description: Forneça contexto sobre por que você está fazendo esta pergunta.
+      placeholder: |
+        O que você está tentando fazer? Qual problema você encontrou?
+    validations:
+      required: true
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: 🔍 O Que Você Já Tentou
+      description: Descreva o que você já tentou fazer ou pesquisar.
+      placeholder: |
+        - Verifiquei a documentação em...
+        - Tentei fazer X mas...
+        - Procurei em Y e encontrei Z, mas...
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 🖥️ Ambiente (se relevante)
+      description: Informações sobre seu ambiente podem ajudar a responder sua pergunta.
+      placeholder: |
+        - OS: [ex: Ubuntu 22.04]
+        - Versão: [ex: v1.2.3]
+        - Configuração: [detalhes relevantes]
+    validations:
+      required: false
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: 📋 Exemplos ou Code Snippets
+      description: Se aplicável, forneça código ou exemplos relacionados à sua pergunta.
+      placeholder: |
+        ```python
+        # Seu código aqui
+        ```
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: ℹ️ Informações Adicionais
+      description: Qualquer outra informação que possa ajudar.
+      placeholder: Links, screenshots, logs, etc.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: ✔️ Checklist
+      description: Antes de fazer sua pergunta
+      options:
+        - label: Procurei na documentação e não encontrei a resposta
+          required: true
+        - label: Procurei por issues/perguntas similares
+          required: true
+        - label: Minha pergunta é clara e específica
+          required: false

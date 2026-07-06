@@ -1,0 +1,381 @@
+schema:
+  name: "mcp-questions"
+  version: "2.0"
+  objective_manifest_compatibility:
+    schema_name: "objective-manifest"
+    min_version: "1.1"
+  null_policy:
+    value: null
+    meaning: "Informação não fornecida / não aplicável."
+
+meta:
+  generated_from:
+    objective_yaml_path: "objetivo.yaml"
+    generator: "copilot"
+    generator_version: null
+  created_at: null
+  updated_at: "2026-03-26"
+  locale: "pt-BR"
+  example: true
+
+# -----------------------------------------------------------------------------
+# 1) Project identity (espelha gates e project do objetivo.yaml)
+# -----------------------------------------------------------------------------
+project:
+  name: "user-management-api"
+  type: "api"               # api|cli|lib|webapp|firmware|data-pipeline|service|unknown
+  domain: "software"
+  description: "API REST para gerenciamento de usuários com autenticação JWT, perfis de usuário e sistema de permissões"
+  versioning:
+    api_version: "v1"
+    strategy: "semver"
+  success_criteria: null
+
+# -----------------------------------------------------------------------------
+# 2) Stack selection (agnóstico com perfil concreto)
+# -----------------------------------------------------------------------------
+stack:
+  primary:
+    language: "python"
+    runtime:
+      python_version: "3.11"
+      virtual_env: "venv"        # venv|virtualenv|conda|poetry|uv|null
+    framework:
+      name: "fastapi"
+      notes: null
+    package_manager:
+      name: "pip"                # pip|poetry|pipenv|uv|null
+  profiles:
+    # Profiles permitem suportar multi-stack no futuro no mesmo modelo.
+    - id: "python-fastapi"
+      enabled: true
+      language: "python"
+      framework: "fastapi"
+
+dependencies:
+  # Boas práticas: separar runtime deps vs dev deps e permitir ranges.
+  runtime:
+    - name: "fastapi"
+      spec: ">=0.104.0"
+    - name: "uvicorn"
+      spec: "[standard]>=0.24.0"
+    - name: "sqlalchemy"
+      spec: ">=2.0.0"
+    - name: "alembic"
+      spec: ">=1.12.0"
+    - name: "pydantic"
+      spec: ">=2.5.0"
+    - name: "python-jose"
+      spec: "[cryptography]>=3.3.0"
+    - name: "passlib"
+      spec: "[bcrypt]>=1.7.4"
+    - name: "python-multipart"
+      spec: ">=0.0.6"
+  development:
+    - name: "pytest"
+      spec: ">=7.4.0"
+    - name: "pytest-asyncio"
+      spec: ">=0.21.0"
+    - name: "httpx"
+      spec: ">=0.25.0"
+    - name: "black"
+      spec: ">=23.0.0"
+    - name: "ruff"
+      spec: ">=0.1.0"
+    - name: "mypy"
+      spec: ">=1.7.0"
+
+# -----------------------------------------------------------------------------
+# 3) Architecture / capabilities (semântica: o que o sistema TEM)
+# -----------------------------------------------------------------------------
+capabilities:
+  api:
+    enabled: true
+    style: "rest"
+    base_path: "/api/v1"
+    endpoints:
+      - method: "POST"
+        path: "/api/v1/auth/register"
+        description: "Cadastro de usuário"
+      - method: "POST"
+        path: "/api/v1/auth/login"
+        description: "Login"
+      - method: "POST"
+        path: "/api/v1/auth/refresh"
+        description: "Renovar token"
+      - method: "GET"
+        path: "/api/v1/users/me"
+        description: "Perfil do usuário atual"
+      - method: "PUT"
+        path: "/api/v1/users/me"
+        description: "Atualizar perfil"
+      - method: "GET"
+        path: "/api/v1/users"
+        description: "Listar usuários (admin)"
+      - method: "DELETE"
+        path: "/api/v1/users/{id}"
+        description: "Deletar usuário (admin)"
+  features:
+    - "Cadastro e login de usuários"
+    - "Autenticação JWT com refresh tokens"
+    - "Perfis de usuário com roles (admin, user, guest)"
+    - "CRUD completo de usuários"
+    - "Upload de avatar de usuário"
+    - "Reset de senha via email"
+    - "Logs de auditoria"
+    - "Rate limiting"
+    - "Documentação automática (Swagger)"
+
+# -----------------------------------------------------------------------------
+# 4) Data & persistence (agnóstico: DB é só um tipo de backend)
+# -----------------------------------------------------------------------------
+data:
+  persistence:
+    enabled: true
+    backend:
+      type: "postgresql"
+      version: "15"
+      connection:
+        # Boas práticas: secrets não devem ficar em texto plano.
+        # Como é EXEMPLO, mantive o valor, mas marquei como "example_only".
+        connection_string:
+          value: "postgresql://localhost:5432/user_management_db"  # usuário/senha via env vars
+          secret: true
+          example_only: true
+      orm: "sqlalchemy"
+      migrations:
+        enabled: true
+        tool: "alembic"
+
+# -----------------------------------------------------------------------------
+# 5) Security model (mapeia para intent/requirements.non_functional.security)
+# -----------------------------------------------------------------------------
+security:
+  authentication:
+    enabled: true
+    method: "jwt"           # jwt|oauth2|session|basic|mtls|none|unknown
+    jwt:
+      refresh_tokens: true
+  transport_security:
+    requires_ssl: true
+  cors:
+    enabled: true
+    origins:
+      - "http://localhost:3000"
+      - "https://myapp.com"
+  protections:
+    security_headers: true
+    rate_limiting: true
+    input_validation: true
+    sql_injection_protection: true
+    xss_protection: true
+
+# -----------------------------------------------------------------------------
+# 6) Observability / operations
+# -----------------------------------------------------------------------------
+observability:
+  logging:
+    level: "INFO"
+    format: "json"
+  metrics:
+    enabled: true
+    tools:
+      - "prometheus"
+      - "grafana"
+  health_checks:
+    enabled: true
+    endpoint: "/health"
+
+# -----------------------------------------------------------------------------
+# 7) Environment variables (padronizado: key + description)
+# -----------------------------------------------------------------------------
+environment:
+  variables:
+    - key: "DATABASE_URL"
+      description: "String de conexão do banco"
+      required: true
+      secret: true
+    - key: "JWT_SECRET_KEY"
+      description: "Chave secreta para JWT"
+      required: true
+      secret: true
+    - key: "JWT_ALGORITHM"
+      description: "Algoritmo JWT (default: HS256)"
+      required: false
+      secret: false
+    - key: "JWT_EXPIRE_MINUTES"
+      description: "Tempo de expiração do token"
+      required: false
+      secret: false
+    - key: "SMTP_SERVER"
+      description: "Servidor de email"
+      required: false
+      secret: false
+    - key: "SMTP_USER"
+      description: "Usuário do email"
+      required: false
+      secret: true
+    - key: "SMTP_PASSWORD"
+      description: "Senha do email"
+      required: false
+      secret: true
+    - key: "CORS_ORIGINS"
+      description: "Origens permitidas para CORS"
+      required: false
+      secret: false
+    - key: "DEBUG"
+      description: "Modo debug (default: false)"
+      required: false
+      secret: false
+
+# -----------------------------------------------------------------------------
+# 8) Repo layout & documentation outputs
+# -----------------------------------------------------------------------------
+repository_layout:
+  folder_structure:
+    - path: "src/api"
+      purpose: "Endpoints da API"
+    - path: "src/models"
+      purpose: "Modelos de dados"
+    - path: "src/services"
+      purpose: "Lógica de negócio"
+    - path: "src/auth"
+      purpose: "Sistema de autenticação"
+    - path: "src/database"
+      purpose: "Configuração do banco"
+    - path: "src/schemas"
+      purpose: "Schemas Pydantic"
+    - path: "tests"
+      purpose: "Testes automatizados"
+    - path: "alembic"
+      purpose: "Migrações do banco"
+    - path: "docs"
+      purpose: "Documentação da API"
+
+documentation:
+  required: true
+  path: "docs"
+  style: "reStructuredText"
+  api_documentation:
+    enabled: true
+    openapi_swagger: true
+  readme:
+    style: "beginner-friendly"
+    template_path: "pattern_code/README.template.md"
+    sections:
+      - "Sobre o Projeto"
+      - "Como Começar"
+      - "Pré-requisitos"
+      - "Instalação"
+      - "Como Usar"
+      - "Endpoints da API"
+      - "Desenvolvimento"
+      - "Contribuindo"
+      - "Licença"
+      - "Contato"
+    features:
+      - "Linguagem simples e acessível"
+      - "Passo a passo detalhado"
+      - "Exemplos de requisições"
+      - "Troubleshooting incluído"
+      - "Links para downloads"
+      - "Seção para iniciantes"
+
+# -----------------------------------------------------------------------------
+# 9) Testing & code quality
+# -----------------------------------------------------------------------------
+quality:
+  testing:
+    enabled: true
+    framework: "pytest"
+    automation: true
+    coverage_target: 90
+    test_plan:
+      required: true
+      path: "docs/test-plan.md"
+  code_style:
+    standard: "pep8"
+  tools:
+    linters:
+      - "ruff"
+    formatters:
+      - "black"
+    typing:
+      - "mypy"
+
+# -----------------------------------------------------------------------------
+# 10) Deployment & CI/CD
+# -----------------------------------------------------------------------------
+delivery:
+  deployment:
+    target: "docker"
+    docker_port: 8000
+    stages:
+      - "development"
+      - "staging"
+      - "production"
+  ci_cd:
+    required: true
+    platform: "github-actions"
+  runtime:
+    background_tasks: true
+    websocket_support: false
+    file_upload_support: true
+    email_service: true
+    caching:
+      enabled: true
+      strategy: "redis"
+  performance_optimization: true
+
+# -----------------------------------------------------------------------------
+# 11) Session / traceability / rollback (alinha com objetivo.yaml)
+# -----------------------------------------------------------------------------
+traceability:
+  session_control: true
+  history_tracking: true
+  history_file: "HISTORICO.md"
+  rollback_enabled: true
+  backup_strategy: "database"
+  callback_on_failure: true
+  versioning_pattern: "filename-vnnn.*"
+
+# -----------------------------------------------------------------------------
+# 12) MCP-specific (context + capabilities + editor integration)
+# -----------------------------------------------------------------------------
+mcp:
+  context_name: "user-management-api-context"
+  capabilities:
+    - "Code completion com contexto do projeto"
+    - "Sugestões de endpoints baseadas no modelo"
+    - "Validação automática de schemas"
+    - "Geração de testes automatizados"
+    - "Documentação automática da API"
+  vscode:
+    extensions:
+      - "Python"
+      - "Pylance"
+      - "REST Client"
+      - "Thunder Client"
+      - "GitLens"
+      - "Docker"
+      - "SQLTools"
+
+# -----------------------------------------------------------------------------
+# 13) Scripts (boas práticas: id + path + purpose + language)
+# -----------------------------------------------------------------------------
+automation:
+  needs_scripts: true
+  scripts_path: "scripts"
+  custom_scripts:
+    - id: "seed_database"
+      path: "scripts/seed_database.py"
+      language: "python"
+      purpose: "Popular banco com dados iniciais"
+    - id: "backup_db"
+      path: "scripts/backup_db.py"
+      language: "python"
+      purpose: "Fazer backup do banco"
+    - id: "deploy"
+      path: "scripts/deploy.py"
+      language: "python"
+      purpose: "Script de deploy automatizado"

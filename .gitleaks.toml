@@ -1,0 +1,61 @@
+title = "Gitleaks Configuration for Default Project Template"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowlist for false positives"
+paths = [
+    '''\.env\.example$''',
+    '''docs/''',
+    '''README\.md$''',
+    '''(^|/)test_.*\.py$''',
+    '''(^|/)conftest\.py$''',
+    '''tests/''',
+    '''.*_test\.py$''',
+    '''\.github/templates/''',
+    '''docs/templates/''',
+    '''CHANGELOG\.md$''',
+]
+
+regexes = [
+    '''(example|sample|test|mock|dummy)_?(key|token|password|secret)''',
+    '''YOUR_.*_(KEY|TOKEN|PASSWORD)''',
+    '''REPLACE_WITH_YOUR''',
+    '''ghp_1234567890abcdefghijklmnopqrstuv1234''',
+    '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9''',
+]
+
+[[rules]]
+id = "ansible-vault-password"
+description = "Ansible Vault Password File"
+regex = '''\.vault_pass$'''
+path = '''\.secrets/'''
+
+[[rules]]
+id = "ssh-private-key"
+description = "SSH Private Key"
+regex = '''-----BEGIN (RSA|OPENSSH|DSA|EC|PGP) PRIVATE KEY-----'''
+path = '''\.secrets/ssh/'''
+
+[[rules]]
+id = "env-credentials"
+description = "Credentials in .env files"
+regex = '''(PASSWORD|TOKEN|SECRET|KEY|API_KEY)=[^\s]+'''
+path = '''\.secrets/\.env'''
+
+[[rules]]
+id = "aws-credentials"
+description = "AWS Credentials"
+regex = '''(aws_access_key_id|aws_secret_access_key)\s*=\s*[A-Z0-9]{20}'''
+path = '''\.secrets/'''
+
+[[rules]]
+id = "github-token"
+description = "GitHub Personal Access Token"
+regex = '''ghp_[0-9a-zA-Z]{36}'''
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic API Key"
+regex = '''(?i)(api[_-]?key|apikey|api[_-]?secret)\s*[:=]\s*['\"]?[0-9a-zA-Z\-_]{32,}['\"]?'''

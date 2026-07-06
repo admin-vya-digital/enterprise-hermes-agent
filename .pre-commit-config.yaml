@@ -1,0 +1,61 @@
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.1
+    hooks:
+      - id: gitleaks
+        name: Gitleaks Secret Scanner
+        entry: gitleaks protect --staged --verbose
+        language: system
+        pass_filenames: false
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-yaml
+        name: Check YAML Syntax
+        exclude: ^\.github/
+      - id: check-json
+        name: Check JSON Syntax
+      - id: check-added-large-files
+        name: Check Large Files
+        args: ["--maxkb=1000"]
+      - id: detect-private-key
+        name: Detect Private Keys
+        exclude: ^\.secrets/
+      - id: trailing-whitespace
+        name: Trim Trailing Whitespace
+        exclude: ^docs/SESSIONS/
+      - id: end-of-file-fixer
+        name: Fix End of Files
+        exclude: ^docs/SESSIONS/
+
+  - repo: https://github.com/ansible/ansible-lint
+    rev: v6.22.1
+    hooks:
+      - id: ansible-lint
+        name: Ansible Lint
+        files: \.(yaml|yml)$
+        exclude: ^(\.github/|\.vscode/)
+
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        name: Black Python Formatter
+        language_version: python3.12
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.11
+    hooks:
+      - id: ruff
+        name: Ruff Linter
+        args: [--fix, --exit-non-zero-on-fix]
+
+  - repo: https://github.com/pycqa/bandit
+    rev: 1.7.6
+    hooks:
+      - id: bandit
+        name: Bandit Security Linter
+        args: ["-c", "pyproject.toml"]
+        additional_dependencies: ["bandit[toml]"]
+        exclude: ^tests/

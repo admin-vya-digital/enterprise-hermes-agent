@@ -1,0 +1,187 @@
+.
+├── data
+│   ├── dashboard
+│   │   ├── audio_cache
+│   │   ├── auth.lock
+│   │   ├── config.yaml
+│   │   ├── cron
+│   │   │   └── output
+│   │   ├── home
+│   │   ├── hooks
+│   │   ├── image_cache
+│   │   ├── kanban.db
+│   │   ├── kanban.db.init.lock
+│   │   ├── logs
+│   │   │   ├── agent.log
+│   │   │   ├── container-boot.log
+│   │   │   ├── curator
+│   │   │   ├── errors.log
+│   │   │   └── gateways
+│   │   ├── memories
+│   │   ├── pairing
+│   │   ├── plans
+│   │   ├── plugins
+│   │   ├── sessions
+│   │   ├── skills
+│   │   │   ├── apple
+│   │   │   ├── autonomous-ai-agents
+│   │   │   ├── creative
+│   │   │   ├── data-science
+│   │   │   ├── devops
+│   │   │   ├── diagramming
+│   │   │   ├── dogfood
+│   │   │   ├── domain
+│   │   │   ├── email
+│   │   │   ├── gaming
+│   │   │   ├── gifs
+│   │   │   ├── github
+│   │   │   ├── inference-sh
+│   │   │   ├── mcp
+│   │   │   ├── media
+│   │   │   ├── mlops
+│   │   │   ├── note-taking
+│   │   │   ├── productivity
+│   │   │   ├── red-teaming
+│   │   │   ├── research
+│   │   │   ├── smart-home
+│   │   │   ├── social-media
+│   │   │   ├── software-development
+│   │   │   └── yuanbao
+│   │   ├── skins
+│   │   ├── SOUL.md
+│   │   ├── state.db
+│   │   └── workspace
+│   └── hermes
+│       ├── audio_cache
+│       ├── bin
+│       │   └── tirith
+│       ├── channel_directory.json
+│       ├── config.yaml
+│       ├── cron
+│       │   └── output
+│       ├── gateway.lock
+│       ├── gateway.pid
+│       ├── gateway_state.json
+│       ├── home
+│       ├── hooks
+│       ├── image_cache
+│       ├── kanban.db
+│       ├── kanban.db.init.lock
+│       ├── logs
+│       │   ├── agent.log
+│       │   ├── container-boot.log
+│       │   ├── curator
+│       │   ├── errors.log
+│       │   ├── gateway-exit-diag.log
+│       │   ├── gateway.log
+│       │   ├── gateways
+│       │   └── gateway-shutdown-diag.log
+│       ├── memories
+│       ├── pairing
+│       ├── plans
+│       ├── sandboxes
+│       │   └── singularity
+│       ├── sessions
+│       ├── skills
+│       │   ├── apple
+│       │   ├── autonomous-ai-agents
+│       │   ├── creative
+│       │   ├── data-science
+│       │   ├── devops
+│       │   ├── diagramming
+│       │   ├── dogfood
+│       │   ├── domain
+│       │   ├── email
+│       │   ├── gaming
+│       │   ├── gifs
+│       │   ├── github
+│       │   ├── inference-sh
+│       │   ├── mcp
+│       │   ├── media
+│       │   ├── mlops
+│       │   ├── note-taking
+│       │   ├── productivity
+│       │   ├── red-teaming
+│       │   ├── research
+│       │   ├── smart-home
+│       │   ├── social-media
+│       │   ├── software-development
+│       │   └── yuanbao
+│       ├── skins
+│       ├── SOUL.md
+│       ├── state.db
+│       ├── state.db-shm
+│       ├── state.db-wal
+│       └── workspace
+├── docker-compose.yaml
+├── hermes_pastas.txt
+├── hermes-profiles-api.zip
+├── project-vya-workforce
+│   ├── docs
+│   │   ├── PLAN.md
+│   │   ├── swagger.html
+│   │   └── Vya.Digital - Digital Workforce.docx
+│   ├── postman_collection.json
+│   ├── README.md
+│   ├── requirements.txt
+│   ├── server
+│   │   ├── app.py
+│   │   ├── calendar_wrap.py
+│   │   ├── contacts.py
+│   │   ├── followup.py
+│   │   ├── hermes_fs.py
+│   │   ├── knowledge.py
+│   │   ├── lifecycle.py
+│   │   ├── provision.py
+│   │   ├── __pycache__
+│   │   │   ├── app.cpython-311.pyc
+│   │   │   ├── calendar_wrap.cpython-311.pyc
+│   │   │   ├── contacts.cpython-311.pyc
+│   │   │   ├── followup.cpython-311.pyc
+│   │   │   ├── hermes_fs.cpython-311.pyc
+│   │   │   ├── hermes_fs.cpython-312.pyc
+│   │   │   ├── knowledge.cpython-311.pyc
+│   │   │   ├── lifecycle.cpython-311.pyc
+│   │   │   ├── provision.cpython-311.pyc
+│   │   │   ├── provision.cpython-312.pyc
+│   │   │   ├── skills.cpython-311.pyc
+│   │   │   └── whatsapp.cpython-311.pyc
+│   │   ├── skills.py
+│   │   └── whatsapp.py
+│   ├── start.sh
+│   └── templates
+│       ├── plugins
+│       │   └── whatsapp-mixed
+│       ├── produto.sdr.md
+│       └── SOUL.sdr.md
+├── project-vya-workforce.zip
+└── server
+    ├── app.py
+    ├── calendar_wrap.py
+    ├── contacts.py
+    ├── followup.py
+    ├── hermes_fs.py
+    ├── knowledge.py
+    ├── lifecycle.py
+    ├── provision.py
+    ├── __pycache__
+    │   ├── app.cpython-311.pyc
+    │   ├── calendar_wrap.cpython-311.pyc
+    │   ├── contacts.cpython-311.pyc
+    │   ├── followup.cpython-311.pyc
+    │   ├── hermes_fs.cpython-311.pyc
+    │   ├── hermes_fs.cpython-312.pyc
+    │   ├── knowledge.cpython-311.pyc
+    │   ├── lifecycle.cpython-311.pyc
+    │   ├── provision.cpython-311.pyc
+    │   ├── provision.cpython-312.pyc
+    │   ├── skills.cpython-311.pyc
+    │   └── whatsapp.cpython-311.pyc
+    ├── README.md
+    ├── requirements.txt
+    ├── skills.py
+    ├── start.sh
+    ├── swagger.html
+    └── whatsapp.py
+
+97 directories, 88 files

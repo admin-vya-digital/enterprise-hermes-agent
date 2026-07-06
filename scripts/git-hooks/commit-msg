@@ -1,0 +1,148 @@
+#!/usr/bin/env python3
+"""
+Pre-commit hook para validar mensagens de commit.
+
+Instala automaticamente via scaffold ou manualmente:
+  cp scripts/git-hooks/commit-msg .git/hooks/commit-msg
+  chmod +x .git/hooks/commit-msg
+
+Este hook valida que mensagens de commit seguem Conventional Commits.
+"""
+
+import re
+import sys
+from pathlib import Path
+
+
+# Conventional Commits pattern
+COMMIT_PATTERN = re.compile(
+    r'^(?P<type>feat|fix|docs|style|refactor|perf|test|chore|ci|build)'
+    r'(?:\((?P<scope>[a-z0-9-]+)\))?'
+    r'(?P<breaking>!)?'
+    r': '
+    r'(?P<subject>.{3,})',
+    re.IGNORECASE
+)
+
+# Tipos de commit aceitos
+COMMIT_TYPES = {
+    'feat': 'Nova funcionalidade',
+    'fix': 'Correção de bug',
+    'docs': 'Documentação',
+    'style': 'Formatação, ponto e vírgula, etc (sem mudança de código)',
+    'refactor': 'Refatoração (sem nova funcionalidade ou correção)',
+    'perf': 'Melhoria de performance',
+    'test': 'Adicionar ou refatorar testes',
+    'chore': 'Tarefas de manutenção, configuração, etc',
+    'ci': 'Mudanças em CI/CD',
+    'build': 'Mudanças no sistema de build ou dependências',
+}
+
+
+def validate_commit_message(message: str) -> tuple[bool, list[str]]:
+    """
+    Valida mensagem de commit segundo Conventional Commits.
+
+    Returns:
+        (is_valid, errors): Tupla com status e lista de erros
+    """
+    errors = []
+
+    # Permitir mensagens de merge/revert
+    if message.startswith(('Merge', 'Revert', 'Initial commit')):
+        return True, []
+
+    # Validar linha do subject
+    lines = message.strip().split('\n')
+    subject = lines[0]
+
+    # Validar padrão
+    match = COMMIT_PATTERN.match(subject)
+    if not match:
+        errors.append("Mensagem não segue o padrão Conventional Commits")
+        errors.append("")
+        errors.append("Padrão esperado: tipo(escopo): descrição")
+        errors.append("")
+        errors.append("Tipos aceitos:")
+        for t, desc in COMMIT_TYPES.items():
+            errors.append(f"  • {t:10s} - {desc}")
+        errors.append("")
+        errors.append("Exemplos válidos:")
+        errors.append("  • feat(api): add user authentication endpoint")
+        errors.append("  • fix: resolve memory leak in parser")
+        errors.append("  • docs(readme): update installation instructions")
+        errors.append("  • refactor(core)!: breaking change in config format")
+        return False, errors
+
+    # Avisos (não bloqueantes)
+    warnings = []
+
+    # Subject muito longo
+    if len(subject) > 72:
+        warnings.append(f"⚠️  Subject muito longo ({len(subject)} chars, recomendado ≤72)")
+
+    # Subject termina com ponto
+    if subject.endswith('.'):
+        warnings.append("⚠️  Subject não deve terminar com ponto")
+
+    # Subject começa com maiúscula (exceto tipo/escopo)
+    desc = match.group('subject')
+    if desc and desc[0].isupper():
+        warnings.append("⚠️  Descrição não deve começar com maiúscula")
+
+    # Descrição muito curta
+    if len(desc) < 10:
+        warnings.append(f"⚠️  Descrição muito curta ({len(desc)} chars, recomendado ≥10)")
+
+    # Mostrar warnings se houver
+    if warnings:
+        print("✅ Commit válido, mas com avisos:", file=sys.stderr)
+        for w in warnings:
+            print(f"   {w}", file=sys.stderr)
+        print("", file=sys.stderr)
+
+    return True, []
+
+
+def main():
+    """Executa validação do commit message."""
+    if len(sys.argv) < 2:
+        print("Erro: arquivo de mensagem não fornecido", file=sys.stderr)
+        return 1
+
+    commit_msg_file = Path(sys.argv[1])
+
+    if not commit_msg_file.exists():
+        print(f"Erro: arquivo não encontrado: {commit_msg_file}", file=sys.stderr)
+        return 1
+
+    # Ler mensagem
+    message = commit_msg_file.read_text(encoding='utf-8').strip()
+
+    # Ignorar mensagens vazias ou de comentário
+    if not message or message.startswith('#'):
+        return 0
+
+    # Validar
+    is_valid, errors = validate_commit_message(message)
+
+    if not is_valid:
+        print("", file=sys.stderr)
+        print("❌ COMMIT REJEITADO", file=sys.stderr)
+        print("", file=sys.stderr)
+        print(f"Mensagem recebida:", file=sys.stderr)
+        print(f"  {message}", file=sys.stderr)
+        print("", file=sys.stderr)
+        for error in errors:
+            print(f"  {error}", file=sys.stderr)
+        print("", file=sys.stderr)
+        print("💡 Dica: Edite a mensagem do commit e tente novamente.", file=sys.stderr)
+        print("", file=sys.stderr)
+        return 1
+
+    print(f"✅ Commit message válido", file=sys.stderr)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
