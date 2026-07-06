@@ -1,0 +1,44 @@
+# Produto — Perfil `{PROFILE_ID}`
+
+> Arquivo de contexto de negócio do agente deste perfil.
+> **Quem pode editar:** exclusivamente o **Número Home** (`{HOME_NUMBER}`) — o dono do perfil.
+> O Hermes Root (orquestrador) NÃO altera este arquivo após o provisionamento inicial.
+> Editáveis pelo Número Home: personalidade, regras de atendimento, catálogo, fluxo, tom de voz, agenda, preços.
+
+---
+
+## 1. Identidade do agente
+
+- **Nome do agente:** *(definir)*
+- **Função:** *(definir — ex: atendente, vendedor, agendador, suporte técnico)*
+- **Público-alvo:** *(definir)*
+- **Tom de voz:** *(definir — ex: informal, técnico, comercial)*
+
+## 2. Quem é o cliente
+
+- **Nome / Razão social:** *(definir)*
+- **Segmento:** *(definir)*
+- **Produto / serviço principal:** *(definir)*
+
+## 3. O que o agente sabe fazer hoje
+
+*(espaço em branco — o Número Home descreve aqui as capacidades iniciais. Ex: "tira dúvidas sobre X, agenda Y, envia link de pagamento Z")*
+
+## 4. O que o agente NÃO deve fazer
+
+*(espaço em branco — limites, restrições, escalonamento para humano)*
+
+## 5. Regras de negócio
+
+*(espaço em branco — preços, condições, prazos, políticas de cancelamento, etc.)*
+
+## 6. Como escalar para humano
+
+*(espaço em branco — quando e como transferir para atendimento humano)*
+
+---
+
+## Histórico de edições
+
+- **{CREATION_DATE}** — Versão base (template) gerada pelo Hermes Root no provisionamento inicial.
+  Próximas edições devem ser solicitadas pelo Número Home (`{HOME_NUMBER}`).

@@ -1,0 +1,164 @@
+{
+  "info": {
+    "name": "Vya Digital Workforce API",
+    "description": "Plano de controle para agentes Hermes — CRUD completo via REST",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8700" },
+    { "key": "api_key",  "value": "{{VYA_API_KEY}}" },
+    { "key": "agent_id", "value": "vya-sdr-01" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{api_key}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/health"
+      }
+    },
+    {
+      "name": "Agents",
+      "item": [
+        {
+          "name": "List agents",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/agents"
+          }
+        },
+        {
+          "name": "Get agent",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/agents/{{agent_id}}"
+          }
+        },
+        {
+          "name": "Create agent",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/agents",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"agent_id\": \"{{agent_id}}\",\n  \"name\": \"SDR Vya\",\n  \"description\": \"SDR digital para qualificação de leads B2B\",\n  \"objective\": \"Qualificar leads e agendar reuniões com o time comercial\",\n  \"personality\": \"Consultivo, empático, direto e profissional\",\n  \"language\": \"pt-BR\",\n  \"model\": \"claude-haiku-4-5-20251001\",\n  \"temperature\": 0.7,\n  \"initial_prompt\": \"Sempre comece a conversa com uma saudação cordial.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Edit agent",
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url}}/agents/{{agent_id}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"claude-sonnet-4-6\",\n  \"temperature\": 0.5\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete agent",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/agents/{{agent_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Knowledge",
+      "item": [
+        {
+          "name": "List knowledge",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/agents/{{agent_id}}/knowledge"
+          }
+        },
+        {
+          "name": "Add knowledge (URL)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/agents/{{agent_id}}/knowledge",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://example.com/sobre\",\n  \"filename\": \"sobre-nos\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Upload knowledge (file)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/agents/{{agent_id}}/knowledge/upload",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Memory",
+      "item": [
+        {
+          "name": "Get contact memory",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/agents/{{agent_id}}/memory/5511999999999"
+          }
+        },
+        {
+          "name": "Write contact memory",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/agents/{{agent_id}}/memory/5511999999999",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filename\": \"perfil.md\",\n  \"content\": \"# Lead\\n- Nome: João Silva\\n- Empresa: Acme Corp\\n- Segmento: Varejo\\n- Status: QUENTE\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Observability",
+      "item": [
+        {
+          "name": "Get logs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/agents/{{agent_id}}/logs?source=gateway&lines=50",
+              "query": [
+                { "key": "source", "value": "gateway" },
+                { "key": "lines", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get runs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/agents/{{agent_id}}/runs?limit=20",
+              "query": [{ "key": "limit", "value": "20" }]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

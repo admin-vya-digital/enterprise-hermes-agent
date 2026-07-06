@@ -1,0 +1,22 @@
+# dados de runtime dos agentes (contêm credenciais e conversas)
+profiles/*
+!profiles/.gitkeep
+data/
+
+# segredos
+.env
+*.env.bak*
+
+# artefatos de build (reconstruídos no Docker)
+hermes-agent/venv/
+node_modules/
+**/node_modules/
+hermes-agent/hermes_cli/web_dist/
+__pycache__/
+**/__pycache__/
+*.egg-info/
+
+# locais
+.claude/
+**/.claude/
+.hermes-stock-0.15.2.bak/
