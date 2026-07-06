@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vya Digital Workforce API — Swagger UI</title>
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f8f8f8; }
+
+    #header {
+      background: #1a1a2e;
+      color: #e0e0e0;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    #header h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: 0.02em; }
+    #header span { font-size: 0.75rem; background: #0f3460; padding: 2px 8px;
+                   border-radius: 12px; color: #a0cfff; }
+
+    #auth-bar {
+      background: #16213e;
+      padding: 10px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.85rem;
+      color: #b0b0c0;
+    }
+    #auth-bar label { font-weight: 600; color: #a0cfff; }
+    #api-key-input {
+      background: #0f3460;
+      border: 1px solid #1a6aaa;
+      color: #e0e0ff;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      width: 300px;
+      outline: none;
+    }
+    #apply-btn {
+      background: #0f3460;
+      border: 1px solid #1a6aaa;
+      color: #a0cfff;
+      padding: 5px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: background 0.2s;
+    }
+    #apply-btn:hover { background: #1a4a80; }
+    #status-dot { width: 8px; height: 8px; border-radius: 50%;
+                  background: #888; display: inline-block; margin-right: 4px; }
+    #status-dot.ok { background: #4caf50; }
+    #status-dot.err { background: #f44336; }
+
+    #swagger-ui { padding: 0 16px 40px; }
+    .swagger-ui .topbar { display: none !important; }
+    .swagger-ui .info { padding-top: 24px; }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <h1>Vya Digital Workforce API</h1>
+  <span>v0.1.0</span>
+  <span id="server-status">
+    <span id="status-dot"></span>
+    <span id="status-text">verificando...</span>
+  </span>
+</div>
+
+<div id="auth-bar">
+  <label for="api-key-input">Bearer Token:</label>
+  <input id="api-key-input" type="text" placeholder="Cole sua VYA_API_KEY aqui" />
+  <button id="apply-btn" onclick="applyKey()">Aplicar</button>
+  <span style="color:#666">— autoriza todos os requests no Swagger abaixo</span>
+</div>
+
+<div id="swagger-ui"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+<script>
+const BASE_URL = "http://localhost:8700";
+
+// ── Verificar server health ───────────────────────────────────────────────────
+async function checkHealth() {
+  const dot  = document.getElementById("status-dot");
+  const text = document.getElementById("status-text");
+  try {
+    const r = await fetch(BASE_URL + "/health", { signal: AbortSignal.timeout(2000) });
+    if (r.ok) {
+      dot.className = "ok";
+      text.textContent = "servidor online";
+    } else {
+      throw new Error(r.status);
+    }
+  } catch {
+    dot.className = "err";
+    text.textContent = "servidor offline — inicie com ./start.sh";
+  }
+}
+checkHealth();
+setInterval(checkHealth, 10000);
+
+// ── Inicializar Swagger UI ────────────────────────────────────────────────────
+let ui;
+
+function initSwagger(token) {
+  const cfg = {
+    url: BASE_URL + "/openapi.json",
+    dom_id: "#swagger-ui",
+    deepLinking: true,
+    displayRequestDuration: true,
+    defaultModelsExpandDepth: -1,
+    tryItOutEnabled: true,
+    layout: "BaseLayout",
+    presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
+    plugins: [SwaggerUIBundle.plugins.DownloadUrl],
+  };
+
+  if (token) {
+    cfg.requestInterceptor = (req) => {
+      req.headers["Authorization"] = "Bearer " + token;
+      return req;
+    };
+  }
+
+  ui = SwaggerUIBundle(cfg);
+}
+
+// ── Aplicar chave do input ────────────────────────────────────────────────────
+function applyKey() {
+  const key = document.getElementById("api-key-input").value.trim();
+  if (!key) return;
+  localStorage.setItem("vya_api_key", key);
+  document.getElementById("swagger-ui").innerHTML = "";
+  initSwagger(key);
+}
+
+// Restaurar chave salva
+const saved = localStorage.getItem("vya_api_key");
+if (saved) document.getElementById("api-key-input").value = saved;
+initSwagger(saved || "");
+</script>
+</body>
+</html>

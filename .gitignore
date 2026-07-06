@@ -71,3 +71,7 @@ tmp/*
 hermes-profiles-api.zip
 project-vya-workforce.zip
 wfdb01/config.yaml
+
+# hermes_agent runtime data (perfis de agentes, credenciais/conversas)
+src/hermes_agent/data/*
+!src/hermes_agent/data/**/.gitkeep

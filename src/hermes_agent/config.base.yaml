@@ -1,0 +1,19 @@
+# config.base.yaml — template base copiado para o config.yaml de CADA NOVO
+# agente provisionado via POST /agents (vya-workforce-api,
+# hermes-api/server/provision.py:_generate_profile_config).
+#
+# Não afeta agentes já existentes (só lido na criação) nem o perfil
+# "dashboard" (criado por "hermes dashboard", não passa por provision.py).
+#
+# O campo "provider" é sempre sobrescrito pelo valor enviado no POST
+# /agents — não precisa (nem deve) ser definido aqui.
+#
+# Não colocar credenciais/chaves aqui — isso é responsabilidade de
+# `provider_api_key` no corpo do POST /agents ou de .secrets/hermes/.
+
+agent:
+  max_turns: 90
+  reasoning_effort: medium
+
+toolsets:
+  - hermes-cli

@@ -1,0 +1,133 @@
+services:
+
+  # --- vya-workforce-api: provisionamento/gestão de agentes Hermes ---
+  # Imagem própria (target "api" do Dockerfile) — container separado do
+  # dashboard/gateway do hermes-agent.
+  api:
+    # build:
+    #   context: .
+    #   target: api
+    image: adminvyadigital/hermes-agent-api:latest
+    container_name: vya-workforce-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    secrets:
+      - VYA_API_KEY
+      - ANTHROPIC_API_KEY
+      - GROQ_API_KEY
+      - OPENAI_API_KEY
+    ports:
+      - "${VYA_PORT:-8700}:8700"
+    volumes:
+      - ./data/profiles:/app/profiles
+      - ./skills:/app/skills
+      - ./config.base.yaml:/app/config.base.yaml:ro
+    networks:
+      - app-network
+
+  # --- Dashboard Web do Hermes Agent ---
+  # Imagem própria (target "hermes-agent" do Dockerfile) — não contém o
+  # código da vya-workforce-api, apenas o hermes-agent em si.
+  dashboard:
+    # build:
+    #   context: .
+    #   target: hermes-agent
+    image: adminvyadigital/hermes-agent-api:latest
+    container_name: vya-workforce-dashboard
+    restart: unless-stopped
+    command:
+      - /app/hermes-agent/venv/bin/hermes
+      - dashboard
+      - --host
+      - "0.0.0.0"
+      - --no-open
+      - --skip-build
+    environment:
+      - HERMES_HOME=/app/profiles/dashboard
+    labels:
+      - 'traefik.http.routers.dashboard.rule=Host(`hermes.vya.digital`)'
+      - 'traefik.http.routers.dashboard.tls=true'
+      - 'traefik.http.routers.dashboard.entrypoints=websecure'
+      - 'traefik.http.routers.dashboard.tls.certresolver=lets-encrypt'
+      - 'traefik.http.middlewares.dashboard.headers.SSLRedirect=true'
+      - 'traefik.http.middlewares.dashboard.headers.STSSeconds=315360000'
+      - 'traefik.http.middlewares.dashboard.headers.browserXSSFilter=true'
+      - 'traefik.http.middlewares.dashboard.headers.contentTypeNosniff=true'
+      - 'traefik.http.middlewares.dashboard.headers.forceSTSHeader=true'
+      - 'traefik.http.middlewares.dashboard.headers.SSLHost=vya.digital'
+      - 'traefik.http.middlewares.dashboard.headers.STSIncludeSubdomains=true'
+      - 'traefik.http.middlewares.dashboard.headers.STSPreload=true'
+      - 'traefik.http.routers.dashboard.middlewares=dashboard@docker'
+      - "traefik.http.services.dashboard.loadbalancer.server.port=9119"
+    env_file:
+      - .env
+    secrets:
+      - VYA_API_KEY
+      - ANTHROPIC_API_KEY
+      - GROQ_API_KEY
+      - OPENAI_API_KEY
+      - HERMES_DASHBOARD_BASIC_AUTH_USERNAME
+      - HERMES_DASHBOARD_BASIC_AUTH_PASSWORD
+      - HERMES_DASHBOARD_BASIC_AUTH_SECRET
+    ports:
+      - "${HERMES_DASHBOARD_PORT:-9119}:9119"
+    volumes:
+      - ./data/profiles:/app/profiles
+      - ./skills:/app/skills
+    depends_on:
+      - api
+    networks:
+      - app-network
+
+  # --- Gateway do perfil "dashboard" (mensageria administrativa opcional) ---
+  # Container próprio (em vez de rodar em background dentro do "dashboard")
+  # para ter restart/logs/PID 1 gerenciados pelo Docker. Os gateways por
+  # agente (um por perfil provisionado via vya-workforce-api) continuam
+  # sendo subprocessos dinâmicos dentro do container "api" — não são
+  # containers separados (ver README, seção "Gateways").
+  gateway:
+    image: adminvyadigital/hermes-agent-api:latest
+    container_name: vya-workforce-gateway
+    restart: unless-stopped
+    command:
+      - /app/hermes-agent/venv/bin/hermes
+      - gateway
+      - run
+    environment:
+      - HERMES_HOME=/app/profiles/dashboard
+    env_file:
+      - .env
+    secrets:
+      - VYA_API_KEY
+      - ANTHROPIC_API_KEY
+      - GROQ_API_KEY
+      - OPENAI_API_KEY
+    volumes:
+      - ./data/profiles:/app/profiles
+      - ./skills:/app/skills
+    depends_on:
+      - dashboard
+    networks:
+      - app-network
+
+secrets:
+  # não alterar o path - este é o padrão do proejto no host.
+  VYA_API_KEY:
+    file: .secrets/hermes/VYA_API_KEY
+  ANTHROPIC_API_KEY:
+    file: .secrets/hermes/ANTHROPIC_API_KEY
+  GROQ_API_KEY:
+    file: .secrets/hermes/GROQ_API_KEY
+  OPENAI_API_KEY:
+    file: .secrets/hermes/OPENAI_API_KEY
+  HERMES_DASHBOARD_BASIC_AUTH_USERNAME:
+    file: .secrets/hermes/HERMES_DASHBOARD_BASIC_AUTH_USERNAME
+  HERMES_DASHBOARD_BASIC_AUTH_PASSWORD:
+    file: .secrets/hermes/HERMES_DASHBOARD_BASIC_AUTH_PASSWORD
+  HERMES_DASHBOARD_BASIC_AUTH_SECRET:
+    file: .secrets/hermes/HERMES_DASHBOARD_BASIC_AUTH_SECRET
+
+networks:
+  app-network:
+    external: true

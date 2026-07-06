@@ -1,0 +1,51 @@
+services:
+
+  # --- docker-api: proxy/wrapper para a vya-workforce-api em homologação ---
+  api:
+    # build: .
+    container_name: hermes-interaction-api
+    restart: unless-stopped
+    image: adminvyadigital/hermes-api:latest
+    labels:
+      - 'traefik.http.routers.hermes-interaction-api.rule=Host(`hermes-api.vya.digital`)'
+      - 'traefik.http.routers.hermes-interaction-api.tls=true'
+      - 'traefik.http.routers.hermes-interaction-api.entrypoints=websecure'
+      - 'traefik.http.routers.hermes-interaction-api.tls.certresolver=lets-encrypt'
+      # Cabeçalhos de segurança — sem browserXSSFilter aqui: é proteção
+      # contra XSS em HTML renderizado no navegador, não se aplica a uma
+      # API JSON (diferente do dashboard, que serve uma SPA).
+      - 'traefik.http.middlewares.hermes-interaction-api.headers.SSLRedirect=true'
+      - 'traefik.http.middlewares.hermes-interaction-api.headers.STSSeconds=315360000'
+      - 'traefik.http.middlewares.hermes-interaction-api.headers.contentTypeNosniff=true'
+      - 'traefik.http.middlewares.hermes-interaction-api.headers.forceSTSHeader=true'
+      - 'traefik.http.middlewares.hermes-interaction-api.headers.SSLHost=vya.digital'
+      - 'traefik.http.middlewares.hermes-interaction-api.headers.STSIncludeSubdomains=true'
+      - 'traefik.http.middlewares.hermes-interaction-api.headers.STSPreload=true'
+      # CORS — necessário porque é uma API consumida por clientes externos
+      # (browser/JS), diferente do dashboard (app server-rendered). Ajuste
+      # accessControlAllowOriginList para o(s) domínio(s) reais do
+      # front-end que vai consumir esta API.
+      - 'traefik.http.middlewares.hermes-interaction-api.headers.accessControlAllowMethods=GET,POST,PUT,DELETE,OPTIONS'
+      - 'traefik.http.middlewares.hermes-interaction-api.headers.accessControlAllowHeaders=Authorization,Content-Type'
+      - 'traefik.http.middlewares.hermes-interaction-api.headers.accessControlAllowOriginList=https://hermes-api.vya.digital'
+      - 'traefik.http.middlewares.hermes-interaction-api.headers.accessControlMaxAge=86400'
+      - 'traefik.http.middlewares.hermes-interaction-api.headers.addVaryHeader=true'
+      - 'traefik.http.routers.hermes-interaction-api.middlewares=hermes-interaction-api@docker'
+      - "traefik.http.services.hermes-interaction-api.loadbalancer.server.port=8000"
+    env_file:
+      - .env
+    secrets:
+      - VYA_API_KEY
+    ports:
+      - "${DOCKER_API_PORT:-8701}:8000"
+    networks:
+      - app-network
+
+secrets:
+  VYA_API_KEY:
+  # não alterar - essa é a estrutura do host container.
+    file: .secrets/hermes/VYA_API_KEY
+
+networks:
+  app-network:
+    external: true
