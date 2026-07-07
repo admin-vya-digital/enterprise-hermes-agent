@@ -24,6 +24,7 @@ Mounting
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import json
 import logging
 from typing import Any
@@ -32,9 +33,34 @@ from tui_gateway import server
 
 _log = logging.getLogger(__name__)
 
-# Max seconds a pool-dispatched handler will block waiting for the event loop
-# to flush a WS frame before we mark the transport dead. Protects handler
-# threads from a wedged socket.
+# ── Write completion executor ────────────────────────────────────────────
+# RPC pool workers call write() which schedules _safe_send on the event
+# loop.  Rather than blocking the RPC worker on fut.result(), we offload
+# the blocking wait to a dedicated *write executor*.  This keeps the RPC
+# pool free for computation while a small dedicated pool handles I/O
+# completion monitoring.
+#
+#                     ┌──────────────────┐
+#  RPC pool worker ──►│ schedule on loop │──► returns immediately
+#    (32 threads)     │ submit to write  │    (RPC worker freed)
+#                     │   executor       │
+#                     └──────┬───────────┘
+#                            │
+#              ┌─────────────▼─────────────┐
+#              │  write executor (2 thr)   │
+#              │  fut.result(timeout=10)   │
+#              │  on timeout → keep alive  │
+#              │  (no _closed; _safe_send  │
+#              │  catches real errors)     │
+#              └───────────────────────────┘
+#
+_WRITE_EXECUTOR = concurrent.futures.ThreadPoolExecutor(
+    max_workers=2,
+    thread_name_prefix="tui-ws-write",
+)
+
+# Max seconds the write executor will wait for the event loop to flush a
+# frame before logging. _safe_send handles real socket errors.
 _WS_WRITE_TIMEOUT_S = 10.0
 _WS_LOG_PAYLOAD_PREVIEW = 240
 
@@ -49,17 +75,15 @@ except ImportError:  # pragma: no cover - starlette is a required install path
 class WSTransport:
     """Per-connection WS transport.
 
-    ``write`` is safe to call from any thread *other than* the event loop
-    thread that owns the socket. Pool workers (the only real caller) run in
-    their own threads, so marshalling onto the loop via
-    :func:`asyncio.run_coroutine_threadsafe` + ``future.result()`` is correct
-    and deadlock-free there.
+    ``write`` is safe to call from any thread.  From the event loop thread
+    we use fire-and-forget (``create_task``).  From worker threads we
+    schedule ``_safe_send`` on the event loop and then offload the
+    blocking ``fut.result()`` wait to the module-level ``_WRITE_EXECUTOR``
+    so the calling thread (typically an RPC pool worker) is never blocked
+    by I/O completion.
 
-    When called from the loop thread itself (e.g. by ``handle_ws`` for an
-    inline response) the same call would deadlock: we'd schedule work onto
-    the loop we're currently blocking. We detect that case and fire-and-
-    forget instead. Callers that need to know when the bytes are on the wire
-    should use :meth:`write_async` from the loop thread.
+    Callers that need to know when the bytes are on the wire should use
+    :meth:`write_async` from the loop thread.
     """
 
     def __init__(
@@ -75,6 +99,13 @@ class WSTransport:
         self._closed = False
 
     def write(self, obj: dict) -> bool:
+        """Enqueue *obj* for delivery. Never blocks the calling thread.
+
+        From the event loop thread: fires and forgets via ``create_task``.
+        From any other thread: schedules ``_safe_send`` on the event loop
+        and submits the ``fut.result()`` wait to ``_WRITE_EXECUTOR`` so
+        the caller returns immediately.
+        """
         if self._closed:
             return False
 
@@ -86,23 +117,28 @@ class WSTransport:
             on_loop = False
 
         if on_loop:
-            # Fire-and-forget — don't block the loop waiting on itself.
             self._loop.create_task(self._safe_send(line))
             return True
 
+        # Worker thread path: schedule on event loop, offload the wait.
+        # Keep the "loop stalled, keep transport alive" semantics on
+        # timeout — no _closed latch here, _safe_send catches real socket
+        # errors.
         try:
             from agent.async_utils import safe_schedule_threadsafe
+
             fut = safe_schedule_threadsafe(self._safe_send(line), self._loop)
             if fut is None:
                 self._closed = True
                 return False
-            fut.result(timeout=_WS_WRITE_TIMEOUT_S)
-            return not self._closed
+            _WRITE_EXECUTOR.submit(self._await_write, fut)
+            return True
         except Exception as exc:
-            self._closed = True
             _log.warning(
-                "ws write failed peer=%s error_type=%s error=%s",
-                self._peer, type(exc).__name__, exc,
+                "ws schedule failed peer=%s error_type=%s error=%s",
+                self._peer,
+                type(exc).__name__,
+                exc,
             )
             return False
 
@@ -113,6 +149,28 @@ class WSTransport:
         await self._safe_send(json.dumps(obj, ensure_ascii=False))
         return not self._closed
 
+    def _await_write(self, fut: concurrent.futures.Future) -> None:
+        """Block on *fut* in a write-executor thread.
+
+        If the event loop cannot flush the frame within
+        ``_WS_WRITE_TIMEOUT_S`` we log and let the transport stay alive —
+        the frame was already scheduled and will flush once the loop
+        breathes. Latching ``_closed`` here would permanently silence
+        live windows after a single slow write; ``_safe_send`` catches
+        real socket errors.
+        """
+        try:
+            fut.result(timeout=_WS_WRITE_TIMEOUT_S)
+        except concurrent.futures.TimeoutError:
+            _log.warning(
+                "ws write slow (loop stalled >%ss) peer=%s — frame left in flight",
+                _WS_WRITE_TIMEOUT_S,
+                self._peer,
+            )
+        except Exception:
+            # _safe_send already logged + set self._closed.
+            pass
+
     async def _safe_send(self, line: str) -> None:
         try:
             await self._ws.send_text(line)
@@ -120,7 +178,9 @@ class WSTransport:
             self._closed = True
             _log.warning(
                 "ws send failed peer=%s error_type=%s error=%s",
-                self._peer, type(exc).__name__, exc,
+                self._peer,
+                type(exc).__name__,
+                exc,
             )
 
     def close(self) -> None:
