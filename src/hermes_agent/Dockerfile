@@ -7,6 +7,24 @@
 # (ver docker-compose.yaml), pois mudam em runtime.
 
 # ---------------------------------------------------------------------------
+# Versão do hermes-agent (upstream NousResearch/hermes-agent) usada no build.
+#
+# ARGs globais (antes do primeiro FROM) para ficarem visíveis logo no topo do
+# arquivo e serem reusáveis por qualquer stage. Pin por SHA de commit
+# imutável (não só pela tag) — uma tag pode ser recriada apontando para outro
+# commit (git tag -f), o que quebraria a reprodutibilidade e a integridade do
+# build silenciosamente. HERMES_AGENT_REF documenta a tag de release
+# correspondente só para leitura humana; quem resolve o checkout é
+# HERMES_AGENT_SHA.
+#
+# Atualizar: rode scripts/update_hermes_agent_version.py (consulta a última
+# release do GitHub e já reescreve os dois ARGs abaixo).
+# ---------------------------------------------------------------------------
+ARG HERMES_AGENT_REPO=https://github.com/NousResearch/hermes-agent.git
+ARG HERMES_AGENT_REF=v2026.7.7.2
+ARG HERMES_AGENT_SHA=9de9c25f620ff7f1ce0fd5457d596052d5159596
+
+# ---------------------------------------------------------------------------
 # Base: hermes-agent + venv + WhatsApp bridge + dashboard web
 # ---------------------------------------------------------------------------
 FROM python:3.12-slim AS hermes-base
@@ -20,7 +38,48 @@ RUN apt-get update \
 
 WORKDIR /app
 
-COPY hermes-agent/ hermes-agent/
+# hermes-agent é baixado direto do repositório upstream (em vez de copiado da
+# pasta local vendorizada) para garantir código atualizado e íntegro a cada
+# build. Os ARGs globais precisam ser redeclarados (sem valor) dentro do
+# stage para ficarem visíveis aqui — comportamento padrão do Docker.
+ARG HERMES_AGENT_REPO
+ARG HERMES_AGENT_REF
+ARG HERMES_AGENT_SHA
+RUN git clone "${HERMES_AGENT_REPO}" hermes-agent \
+    && cd hermes-agent \
+    && git checkout "${HERMES_AGENT_SHA}" \
+    && test "$(git rev-parse HEAD)" = "${HERMES_AGENT_SHA}" \
+    && rm -rf .git
+
+# Customizações locais (patches ainda não mergeados upstream — ver
+# hermes-agent-patches.diff) aplicadas sobre o código baixado. Todos os 13
+# arquivos do diff (inclui o fix de tui_gateway/ws.py e server.py do WS 1006 —
+# docs/bugs/BUG_REPORT_WS_1006.md e BUG_REPORT_WS_1006_RECORRENCIA.md — e
+# demais customizações de agent/, cron/, gateway/, hermes_state.py,
+# scripts/whatsapp-bridge/bridge.js, tools/, plugins/platforms/whatsapp/)
+# foram reconciliados manualmente contra HERMES_AGENT_SHA=9de9c25f... em
+# 08/07/2026 e testados com "Applied ... cleanly" (zero rejects) nesta
+# versão. gateway/platforms/whatsapp.py foi movido para
+# plugins/platforms/whatsapp/adapter.py upstream — o diff já aponta para o
+# caminho novo. Precisa ser reconciliado de novo a cada bump de
+# HERMES_AGENT_SHA.
+#
+# best-effort: o upstream evolui rápido (releases quase semanais) e o diff
+# pode ficar desatualizado antes da tag ser bumped. Usamos --reject em vez de
+# deixar o build falhar: os hunks que não baterem viram .rej dentro de
+# hermes-agent/ (aparecem no log abaixo) para reconciliação manual, mas o
+# build segue — nunca publicamos uma imagem sem as customizações que
+# aplicaram, e as que falharem ficam visíveis em vez de silenciosamente
+# ausentes.
+COPY hermes-agent-patches.diff ./
+RUN cd hermes-agent \
+    && (git apply --whitespace=fix --reject --verbose ../hermes-agent-patches.diff 2>&1 | tee /tmp/patch-apply.log || true) \
+    && if grep -Eq "\.rej$|error:|arquivo ou diretório inexistente|No such file or directory" /tmp/patch-apply.log; then \
+        echo "!!! ATENÇÃO: parte(s) do hermes-agent-patches.diff não foram aplicadas contra HERMES_AGENT_REF=${HERMES_AGENT_REF} — reconciliar manualmente (ver log acima e .rej abaixo):"; \
+        find . -name "*.rej"; \
+    fi \
+    && cd .. && rm -f hermes-agent-patches.diff
+
 COPY entrypoint.sh ./
 RUN chmod +x entrypoint.sh
 

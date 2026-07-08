@@ -10,30 +10,6 @@ index 675130a88..ac4575db4 100644
                  )
                  agent._memory_store.load_from_disk()
          except Exception:
-diff --git a/agent/agent_runtime_helpers.py b/agent/agent_runtime_helpers.py
-index 09eccef5f..c72f73936 100644
---- a/agent/agent_runtime_helpers.py
-+++ b/agent/agent_runtime_helpers.py
-@@ -1709,6 +1709,7 @@ def invoke_tool(agent, function_name: str, function_args: dict, effective_task_i
-                 sort=function_args.get("sort"),
-                 db=session_db,
-                 current_session_id=agent.session_id,
-+                contact_user_id=getattr(agent, "_user_id", None),
-             )
-         )
-     elif function_name == "memory":
-diff --git a/agent/tool_executor.py b/agent/tool_executor.py
-index fc3667edb..16652e649 100644
---- a/agent/tool_executor.py
-+++ b/agent/tool_executor.py
-@@ -897,6 +897,7 @@ def execute_tool_calls_sequential(agent, assistant_message, messages: list, effe
-                     sort=function_args.get("sort"),
-                     db=session_db,
-                     current_session_id=agent.session_id,
-+                    contact_user_id=getattr(agent, "_user_id", None),
-                 )
-             tool_duration = time.time() - tool_start_time
-             if agent._should_emit_quiet_tool_messages():
 diff --git a/cron/scheduler.py b/cron/scheduler.py
 index d0240e9af..675d7263d 100644
 --- a/cron/scheduler.py
@@ -54,23 +30,6 @@ index d0240e9af..675d7263d 100644
          )
      else:
          delivery_content = content
-diff --git a/gateway/platforms/whatsapp.py b/gateway/platforms/whatsapp.py
-index 7ece37dbc..01aec6e92 100644
---- a/gateway/platforms/whatsapp.py
-+++ b/gateway/platforms/whatsapp.py
-@@ -250,7 +250,11 @@ class WhatsAppAdapter(BasePlatformAdapter):
-     def __init__(self, config: PlatformConfig):
-         super().__init__(config, Platform.WHATSAPP)
-         self._bridge_process: Optional[subprocess.Popen] = None
--        self._bridge_port: int = config.extra.get("bridge_port", 3000)
-+        _env_port = os.environ.get("BRIDGE_PORT", "")
-+        self._bridge_port: int = (
-+            int(_env_port) if _env_port.isdigit()
-+            else config.extra.get("bridge_port", 3000)
-+        )
-         self._bridge_script: Optional[str] = config.extra.get(
-             "bridge_script",
-             str(self._DEFAULT_BRIDGE_DIR / "bridge.js"),
 diff --git a/gateway/slash_access.py b/gateway/slash_access.py
 index e4a398dc1..78dccac36 100644
 --- a/gateway/slash_access.py
@@ -98,32 +57,161 @@ index e4a398dc1..78dccac36 100644
      "whoami",
  })
  
+diff --git a/tui_gateway/ws.py b/tui_gateway/ws.py
+--- a/tui_gateway/ws.py
++++ b/tui_gateway/ws.py
+@@ -41,6 +41,19 @@
+ _WS_WRITE_TIMEOUT_S = 10.0
+ _WS_LOG_PAYLOAD_PREVIEW = 240
+ 
++# RPC pool workers call write(); the non-streaming path below used to block
++# each caller on fut.result(timeout=_WS_WRITE_TIMEOUT_S) waiting for the
++# event loop to confirm the frame was flushed. With multiple concurrent chat
++# sessions the shared RPC pool can saturate on this wait alone, starving
++# other sessions' dispatch and eventually surfacing as an abrupt
++# "session ended (code 1006)" on the client once a worker times out.
++# Offload that wait to a small dedicated executor so the calling RPC worker
++# returns immediately — see docs/bugs/BUG_REPORT_WS_1006.md.
++_WRITE_EXECUTOR = concurrent.futures.ThreadPoolExecutor(
++    max_workers=2,
++    thread_name_prefix="tui-ws-write",
++)
++
+ # Per-token streaming frames are coalesced: buffered and flushed as a batch on
+ # a short timer instead of waking the event loop once per token. A model reply
+ # emits hundreds of these in a burst, and each one is a loop wakeup competing
+@@ -158,29 +171,44 @@
+                 self._closed = True
+                 return False
+ 
++        # Offload the flush-confirmation wait to the dedicated write executor
++        # instead of blocking this RPC pool worker thread on fut.result() —
++        # see _WRITE_EXECUTOR above. Keep-alive-on-timeout semantics are
++        # preserved in _await_write.
++        try:
++            _WRITE_EXECUTOR.submit(self._await_write, fut)
++            return True
++        except Exception as exc:
++            _log.warning(
++                "ws schedule failed peer=%s error_type=%s error=%s",
++                self._peer, type(exc).__name__, exc,
++            )
++            return False
++
++    def _await_write(self, fut: concurrent.futures.Future) -> None:
++        """Block on *fut* in a write-executor thread, not the RPC caller's.
++
++        On timeout the event loop is assumed stalled (GIL-heavy agent turn,
++        delegation running N children), NOT the socket dead. The send
++        coroutine is already scheduled and will flush once the loop
++        breathes — latching ``_closed`` here would permanently silence live
++        windows after one slow write (the "subagent window shows zero
++        streaming" bug). ``_safe_send_many`` latches ``_closed`` on a real
++        socket error when the frame actually fails.
++        """
+         try:
+             fut.result(timeout=_WS_WRITE_TIMEOUT_S)
+-            return not self._closed
+         except concurrent.futures.TimeoutError:  # builtin TimeoutError on 3.11+
+-            # The event loop is stalled (GIL-heavy agent turn, delegation
+-            # running N children), NOT the socket dead. The send coroutine is
+-            # already scheduled and will flush once the loop breathes — latching
+-            # _closed here permanently silenced live windows after one slow
+-            # write (the "subagent window shows zero streaming" bug). Unblock
+-            # the worker thread and keep the transport alive; _safe_send_many
+-            # latches on a real socket error when the frame actually fails.
+             _log.warning(
+                 "ws write slow (loop stalled >%ss) peer=%s — frame left in flight",
+                 _WS_WRITE_TIMEOUT_S, self._peer,
+             )
+-            return not self._closed
+         except Exception as exc:
+             self._closed = True
+             _log.warning(
+                 "ws write failed peer=%s error_type=%s error=%s",
+                 self._peer, type(exc).__name__, exc,
+             )
+-            return False
+ 
+     def _arm_token_flush(self) -> None:
+         """Arm the coalesce timer. Runs on the loop thread (call_soon_threadsafe)."""
+
+diff --git a/tui_gateway/server.py b/tui_gateway/server.py
+--- a/tui_gateway/server.py
++++ b/tui_gateway/server.py
+@@ -232,12 +232,21 @@
+     }
+ )
+ 
++# CPU-adaptive default: a hardcoded worker count (previously 4) is starved
++# by a handful of concurrent chat sessions regardless of how many CPUs the
++# host actually has, contributing to the RPC pool saturation behind
++# "session ended (code 1006)" — see docs/bugs/BUG_REPORT_WS_1006.md.
++_DEFAULT_RPC_POOL_WORKERS = max(8, min(32, (os.cpu_count() or 4) * 2))
+ try:
+     _rpc_pool_workers = max(
+-        2, int(os.environ.get("HERMES_TUI_RPC_POOL_WORKERS") or "8")
++        2,
++        int(
++            os.environ.get("HERMES_TUI_RPC_POOL_WORKERS")
++            or str(_DEFAULT_RPC_POOL_WORKERS)
++        ),
+     )
+ except (ValueError, TypeError):
+-    _rpc_pool_workers = 4
++    _rpc_pool_workers = _DEFAULT_RPC_POOL_WORKERS
+ _pool = concurrent.futures.ThreadPoolExecutor(
+     max_workers=_rpc_pool_workers,
+     thread_name_prefix="tui-rpc",
+diff --git a/agent/agent_runtime_helpers.py b/agent/agent_runtime_helpers.py
+--- a/agent/agent_runtime_helpers.py
++++ b/agent/agent_runtime_helpers.py
+@@ -2205,6 +2205,7 @@
+                     sort=next_args.get("sort"),
+                     db=session_db,
+                     current_session_id=agent.session_id,
++                    contact_user_id=getattr(agent, "_user_id", None),
+                 ),
+                 next_args,
+             )
+
+diff --git a/agent/tool_executor.py b/agent/tool_executor.py
+--- a/agent/tool_executor.py
++++ b/agent/tool_executor.py
+@@ -1200,6 +1200,7 @@
+                     sort=next_args.get("sort"),
+                     db=session_db,
+                     current_session_id=agent.session_id,
++                    contact_user_id=getattr(agent, "_user_id", None),
+                 )
+             function_result, function_args = _run_agent_tool_execution_middleware(
+                 agent,
+
 diff --git a/hermes_cli/tips.py b/hermes_cli/tips.py
-index 3a17055e7..197abe172 100644
 --- a/hermes_cli/tips.py
 +++ b/hermes_cli/tips.py
-@@ -142,7 +142,7 @@ TIPS = [
+@@ -142,7 +142,7 @@
      "text_to_speech converts text to audio — plays as voice bubbles on Telegram.",
      "send_message can reach any connected messaging platform from within a session.",
      "The todo tool helps the agent track complex multi-step tasks during a session.",
 -    "session_search performs full-text search across ALL past conversations.",
 +    "session_search performs full-text search across your past conversations (scoped to the current contact in gateway sessions).",
      "The agent automatically saves preferences, corrections, and environment facts to memory.",
-     "mixture_of_agents routes hard problems through 4 frontier LLMs collaboratively.",
+     "/moa routes one hard prompt through your configured Mixture of Agents model set.",
      "Terminal commands support background mode with notify_on_complete for long-running tasks.",
+
 diff --git a/hermes_state.py b/hermes_state.py
-index ca7ea5bd0..d284fadd9 100644
 --- a/hermes_state.py
 +++ b/hermes_state.py
-@@ -1594,6 +1594,7 @@ class SessionDB:
-         include_archived: bool = False,
+@@ -2988,6 +2988,7 @@
          archived_only: bool = False,
          id_query: str = None,
+         search_query: str = None,
 +        user_id: str = None,
      ) -> List[Dict[str, Any]]:
          """List sessions with preview (first user message) and last active timestamp.
  
-@@ -1659,6 +1660,9 @@ class SessionDB:
+@@ -3057,6 +3058,9 @@
          if min_message_count > 0:
              where_clauses.append("s.message_count >= ?")
              params.append(min_message_count)
@@ -133,7 +221,7 @@ index ca7ea5bd0..d284fadd9 100644
          if archived_only:
              where_clauses.append("s.archived = 1")
          elif not include_archived:
-@@ -2778,6 +2782,7 @@ class SessionDB:
+@@ -4469,6 +4473,7 @@
          offset: int = 0,
          sort: str = None,
          include_inactive: bool = False,
@@ -141,10 +229,10 @@ index ca7ea5bd0..d284fadd9 100644
      ) -> List[Dict[str, Any]]:
          """
          Full-text search across session messages using FTS5.
-@@ -2802,6 +2807,11 @@ class SessionDB:
- 
-         Rewound (``active=0``) rows are excluded by default. Pass
-         ``include_inactive=True`` to search every row.
+@@ -4497,6 +4502,11 @@
+         the live context but remain part of the conversation's record, so the
+         pre-compaction transcript stays discoverable after in-place compaction
+         (#38763). Pass ``include_inactive=True`` to search every row regardless.
 +
 +        ``user_id`` scopes the search to a single contact (``s.user_id = ?``).
 +        Used by gateway sessions for per-contact isolation so an agent serving
@@ -153,7 +241,7 @@ index ca7ea5bd0..d284fadd9 100644
          """
          if not self._fts_enabled:
              return []
-@@ -2853,6 +2863,10 @@ class SessionDB:
+@@ -4551,6 +4561,10 @@
              where_clauses.append(f"m.role IN ({role_placeholders})")
              params.extend(role_filter)
  
@@ -164,7 +252,7 @@ index ca7ea5bd0..d284fadd9 100644
          where_sql = " AND ".join(where_clauses)
          params.extend([limit, offset])
  
-@@ -2927,6 +2941,9 @@ class SessionDB:
+@@ -4626,6 +4640,9 @@
                  if role_filter:
                      tri_where.append(f"m.role IN ({','.join('?' for _ in role_filter)})")
                      tri_params.extend(role_filter)
@@ -174,7 +262,7 @@ index ca7ea5bd0..d284fadd9 100644
                  tri_sql = f"""
                      SELECT
                          m.id,
-@@ -2982,6 +2999,9 @@ class SessionDB:
+@@ -4683,6 +4700,9 @@
                  if role_filter:
                      like_where.append(f"m.role IN ({','.join('?' for _ in role_filter)})")
                      like_params.extend(role_filter)
@@ -184,84 +272,46 @@ index ca7ea5bd0..d284fadd9 100644
                  like_sql = f"""
                      SELECT m.id, m.session_id, m.role,
                             substr(m.content,
+
 diff --git a/scripts/whatsapp-bridge/bridge.js b/scripts/whatsapp-bridge/bridge.js
-index 5723d8b54..69fcb9248 100644
 --- a/scripts/whatsapp-bridge/bridge.js
 +++ b/scripts/whatsapp-bridge/bridge.js
-@@ -207,6 +207,19 @@ async function startSocket() {
-       console.log('\n📱 Scan this QR code with WhatsApp on your phone:\n');
-       qrcode.generate(qr, { small: true });
-       console.log('\nWaiting for scan...\n');
-+      try { writeFileSync('/tmp/qr.txt', qr); } catch (e) {}
-+      // Write QR payload to profile qr dir so the dashboard can serve it
-+      try {
-+        // session is at {profile}/platforms/whatsapp/session → go up 3 to reach profile root
-+        // or at {profile}/session → go up 1. Detect by checking grandparent name.
-+        const sessionParent = path.basename(path.resolve(SESSION_DIR, '..'));
-+        const profileRoot = sessionParent === 'whatsapp'
-+          ? path.resolve(SESSION_DIR, '..', '..', '..')
-+          : path.resolve(SESSION_DIR, '..');
-+        const qrDir = path.join(profileRoot, 'qr');
-+        mkdirSync(qrDir, { recursive: true });
-+        writeFileSync(path.join(qrDir, 'qr-connect.txt'), qr);
-+      } catch (e) {}
+@@ -24,7 +24,7 @@
+ import { Boom } from '@hapi/boom';
+ import pino from 'pino';
+ import path from 'path';
+-import { mkdirSync, readFileSync, existsSync, readdirSync, unlinkSync } from 'fs';
++import { mkdirSync, readFileSync, existsSync, readdirSync, unlinkSync, writeFileSync } from 'fs';
+ import { fileURLToPath } from 'url';
+ import { randomBytes, createHash } from 'crypto';
+ import { execFileSync } from 'child_process';
+@@ -419,6 +419,19 @@
+         console.log('\n📱 Scan this QR code with WhatsApp on your phone:\n');
+         qrcode.generate(qr, { small: true });
+         console.log('\nWaiting for scan...\n');
++        try { writeFileSync('/tmp/qr.txt', qr); } catch (e) {}
++        // Write QR payload to profile qr dir so the dashboard can serve it
++        try {
++          // session is at {profile}/platforms/whatsapp/session → go up 3 to reach profile root
++          // or at {profile}/session → go up 1. Detect by checking grandparent name.
++          const sessionParent = path.basename(path.resolve(SESSION_DIR, '..'));
++          const profileRoot = sessionParent === 'whatsapp'
++            ? path.resolve(SESSION_DIR, '..', '..', '..')
++            : path.resolve(SESSION_DIR, '..');
++          const qrDir = path.join(profileRoot, 'qr');
++          mkdirSync(qrDir, { recursive: true });
++          writeFileSync(path.join(qrDir, 'qr-connect.txt'), qr);
++        } catch (e) {}
+       }
      }
  
-     if (connection === 'close') {
-@@ -273,15 +286,21 @@ async function startSocket() {
-           continue;
-         }
- 
--        // Self-chat mode: only allow messages in the user's own self-chat
--        // WhatsApp now uses LID (Linked Identity Device) format: 67427329167522@lid
--        // AND classic format: 34652029134@s.whatsapp.net
--        // sock.user has both: { id: "number:10@s.whatsapp.net", lid: "lid_number:10@lid" }
--        const myNumber = (sock.user?.id || '').replace(/:.*@/, '@').replace(/@.*/, '');
--        const myLid = (sock.user?.lid || '').replace(/:.*@/, '@').replace(/@.*/, '');
--        const chatNumber = chatId.replace(/@.*/, '');
--        const isSelfChat = (myNumber && chatNumber === myNumber) || (myLid && chatNumber === myLid);
--        if (!isSelfChat) continue;
-+        if (WHATSAPP_MODE === 'self-chat') {
-+          // Self-chat mode: only allow messages in the user's own self-chat.
-+          // WhatsApp now uses LID (Linked Identity Device) format: 67427329167522@lid
-+          // AND classic format: 34652029134@s.whatsapp.net
-+          // sock.user has both: { id: "number:10@s.whatsapp.net", lid: "lid_number:10@lid" }
-+          const myNumber = (sock.user?.id || '').replace(/:.*@/, '@').replace(/@.*/, '');
-+          const myLid = (sock.user?.lid || '').replace(/:.*@/, '@').replace(/@.*/, '');
-+          const chatNumber = chatId.replace(/@.*/, '');
-+          const isSelfChat = (myNumber && chatNumber === myNumber) || (myLid && chatNumber === myLid);
-+          if (!isSelfChat) continue;
-+        }
-+        // WHATSAPP_MODE === 'mixed': forward EVERY fromMe message (self-chat
-+        // AND manual replies to clients) — the Python-side plugin decides what
-+        // to do with each one (owner assistant vs. silence-on-manual-reply).
-+        // No filtering here; `fromMe: true` is what lets it distinguish them.
-       }
- 
-       // Handle !fromMe messages (from other people) based on mode.
-@@ -301,6 +320,7 @@ async function startSocket() {
-           } catch {}
-           continue;
-         }
-+        // 'bot' and 'mixed' both gate non-owner messages through the allowlist.
-         if (!matchesAllowedUser(senderId, ALLOWED_USERS, SESSION_DIR)) {
-           try {
-             console.log(JSON.stringify({
-@@ -427,6 +447,7 @@ async function startSocket() {
-         senderName: msg.pushName || senderNumber,
-         chatName: isGroup ? (chatId.split('@')[0]) : (msg.pushName || senderNumber),
-         isGroup,
-+        fromMe: !!msg.key.fromMe,
-         body,
-         hasMedia,
-         mediaType,
+
 diff --git a/tools/memory_tool.py b/tools/memory_tool.py
-index 281c806ea..7abe5ce13 100644
 --- a/tools/memory_tool.py
 +++ b/tools/memory_tool.py
-@@ -121,14 +121,26 @@ class MemoryStore:
-         Tool responses always reflect this live state.
-     """
+@@ -127,17 +127,29 @@
+     # turn to budget exhaustion and suppress the user's reply (issue #42405).
+     _MAX_CONSOLIDATION_FAILURES_PER_TURN = 3
  
 -    def __init__(self, memory_char_limit: int = 2200, user_char_limit: int = 1375):
 +    def __init__(self, memory_char_limit: int = 2200, user_char_limit: int = 1375, contact_user_id: str = None):
@@ -274,6 +324,9 @@ index 281c806ea..7abe5ce13 100644
 +        self._contact_user_id: Optional[str] = contact_user_id
          # Frozen snapshot for system prompt -- set once at load_from_disk()
          self._system_prompt_snapshot: Dict[str, str] = {"memory": "", "user": ""}
+         # Per-turn counter of failed at-capacity consolidation attempts; reset
+         # at each turn boundary by reset_consolidation_failures() (#42405).
+         self._consolidation_failures = 0
  
 +    def _get_memory_dir(self) -> "Path":
 +        """Return the memory directory, scoped per-contact when running in gateway mode."""
@@ -284,10 +337,10 @@ index 281c806ea..7abe5ce13 100644
 +            return base / "contacts" / safe
 +        return base
 +
-     def load_from_disk(self):
-         """Load entries from MEMORY.md and USER.md, capture system prompt snapshot.
- 
-@@ -147,7 +159,7 @@ class MemoryStore:
+     def reset_consolidation_failures(self) -> None:
+         """Reset the per-turn consolidation-failure counter (call at turn start)."""
+         self._consolidation_failures = 0
+@@ -182,7 +194,7 @@
          Scanning is deterministic from disk bytes, so the snapshot remains
          stable for the entire session (prefix-cache invariant holds).
          """
@@ -296,7 +349,7 @@ index 281c806ea..7abe5ce13 100644
          mem_dir.mkdir(parents=True, exist_ok=True)
  
          self.memory_entries = self._read_file(mem_dir / "MEMORY.md")
-@@ -242,9 +254,8 @@ class MemoryStore:
+@@ -277,9 +289,8 @@
                      pass
              fd.close()
  
@@ -308,7 +361,7 @@ index 281c806ea..7abe5ce13 100644
          if target == "user":
              return mem_dir / "USER.md"
          return mem_dir / "MEMORY.md"
-@@ -269,7 +280,7 @@ class MemoryStore:
+@@ -308,7 +319,7 @@
  
      def save_to_disk(self, target: str):
          """Persist entries to the appropriate file. Called after every mutation."""
@@ -317,12 +370,12 @@ index 281c806ea..7abe5ce13 100644
          self._write_file(self._path_for(target), self._entries_for(target))
  
      def _entries_for(self, target: str) -> List[str]:
+
 diff --git a/tools/session_search_tool.py b/tools/session_search_tool.py
-index 65b9d32f1..151d5308e 100644
 --- a/tools/session_search_tool.py
 +++ b/tools/session_search_tool.py
-@@ -107,13 +107,16 @@ def _shape_message(m: Dict[str, Any], anchor_id: Optional[int] = None) -> Dict[s
-     return {k: v for k, v in entry.items() if v is not None or k in ("content",)}
+@@ -257,13 +257,16 @@
+     return json.dumps(response, ensure_ascii=False)
  
  
 -def _list_recent_sessions(db, limit: int, current_session_id: str = None) -> str:
@@ -339,7 +392,7 @@ index 65b9d32f1..151d5308e 100644
          )  # fetch extra so we can skip current
  
          current_root = _resolve_to_parent(db, current_session_id) if current_session_id else None
-@@ -156,6 +159,7 @@ def _scroll(
+@@ -306,6 +309,7 @@
      around_message_id: int,
      window: int = 5,
      current_session_id: str = None,
@@ -347,7 +400,7 @@ index 65b9d32f1..151d5308e 100644
  ) -> str:
      """Scroll shape: return a window of messages centered on an anchor.
  
-@@ -200,6 +204,13 @@ def _scroll(
+@@ -350,6 +354,13 @@
      if not session_meta:
          return tool_error(f"session_id not found: {session_id}", success=False)
  
@@ -361,7 +414,7 @@ index 65b9d32f1..151d5308e 100644
      # Fetch the window
      try:
          view = db.get_messages_around(session_id, around_message_id, window=window)
-@@ -281,6 +292,7 @@ def _discover(
+@@ -503,6 +514,7 @@
      limit: int,
      sort: Optional[str],
      current_session_id: str = None,
@@ -369,8 +422,8 @@ index 65b9d32f1..151d5308e 100644
  ) -> str:
      """Discovery shape: FTS5 + anchored window + bookends per hit. Single call."""
      role_list = role_filter if role_filter else ["user", "assistant"]
-@@ -293,6 +305,11 @@ def _discover(
-             limit=50,  # widen so dedup-by-lineage can find distinct sessions
+@@ -519,6 +531,11 @@
+             # of cron rows are still in hand for the demotion pass below.
              offset=0,
              sort=sort,
 +            # Contact isolation pushed into SQL: when serving a gateway contact,
@@ -381,7 +434,7 @@ index 65b9d32f1..151d5308e 100644
          )
      except Exception as e:
          logging.error("FTS5 search failed: %s", e, exc_info=True)
-@@ -344,6 +361,10 @@ def _discover(
+@@ -585,6 +602,10 @@
          except Exception:
              session_meta = {}
  
@@ -392,7 +445,7 @@ index 65b9d32f1..151d5308e 100644
          entry = {
              "session_id": hit_sid,
              "when": _format_timestamp(
-@@ -381,6 +402,7 @@ def session_search(
+@@ -622,6 +643,7 @@
      limit: int = 3,
      db=None,
      current_session_id: str = None,
@@ -400,15 +453,15 @@ index 65b9d32f1..151d5308e 100644
      # Scroll shape
      session_id: str = None,
      around_message_id: int = None,
-@@ -414,6 +436,7 @@ def session_search(
+@@ -683,6 +705,7 @@
              around_message_id=around_message_id,
              window=window,
              current_session_id=current_session_id,
 +            contact_user_id=contact_user_id,
          )
  
-     # Limit clamp [1, 10]
-@@ -426,7 +449,7 @@ def session_search(
+     # Read shape: a session_id with no anchor → dump the whole session.
+@@ -716,7 +739,7 @@
  
      # Browse shape: no query → recent sessions.
      if not query or not isinstance(query, str) or not query.strip():
@@ -417,7 +470,7 @@ index 65b9d32f1..151d5308e 100644
  
      # Parse role_filter
      role_list: Optional[List[str]] = None
-@@ -447,6 +470,7 @@ def session_search(
+@@ -737,6 +760,7 @@
          limit=limit,
          sort=sort_norm,
          current_session_id=current_session_id,
@@ -425,3 +478,36 @@ index 65b9d32f1..151d5308e 100644
      )
  
  
+
+diff --git a/plugins/platforms/whatsapp/adapter.py b/plugins/platforms/whatsapp/adapter.py
+--- a/plugins/platforms/whatsapp/adapter.py
++++ b/plugins/platforms/whatsapp/adapter.py
+@@ -395,7 +395,9 @@
+             from gateway.platforms.whatsapp_common import resolve_whatsapp_bridge_dir
+             WhatsAppAdapter._DEFAULT_BRIDGE_DIR = resolve_whatsapp_bridge_dir()
+         self._bridge_process: Optional[subprocess.Popen] = None
+-        self._bridge_port: int = config.extra.get("bridge_port", 3000)
++        self._bridge_port: int = env_int(
++            "BRIDGE_PORT", config.extra.get("bridge_port", 3000)
++        )
+         self._bridge_script: Optional[str] = config.extra.get(
+             "bridge_script",
+             str(self._DEFAULT_BRIDGE_DIR / "bridge.js"),
+
+diff --git a/plugins/dashboard_auth/basic/__init__.py b/plugins/dashboard_auth/basic/__init__.py
+--- a/plugins/dashboard_auth/basic/__init__.py
++++ b/plugins/dashboard_auth/basic/__init__.py
+@@ -204,6 +204,12 @@
+     name = "basic"
+     display_name = "Username & Password"
+     supports_password = True
++    # Pure-password provider: start_login()/complete_login() below always
++    # raise NotImplementedError (there's no OAuth redirect flow). Without
++    # this flag, GET /auth/login?provider=basic slips past the
++    # supports_session guard in routes.py and crashes with an unhandled 500
++    # instead of a clean 404 — see docs/bugs/BUG_REPORT_DASHBOARD_AUTH_LOGIN_500.md.
++    supports_session = False
+ 
+     def __init__(
+         self,
+
