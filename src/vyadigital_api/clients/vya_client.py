@@ -127,6 +127,39 @@ class VyaClient:
     async def write_memory(self, agent_id: str, contact_uid: str, payload: dict) -> Any:
         return await self._request("POST", f"/agents/{agent_id}/memory/{contact_uid}", json=payload)
 
+    # ── channels: whatsapp ──────────────────────────────────────────────────
+
+    async def whatsapp_status(self, agent_id: str) -> Any:
+        return await self._request("GET", f"/agents/{agent_id}/channels/whatsapp")
+
+    async def whatsapp_connect(self, agent_id: str) -> Any:
+        return await self._request("POST", f"/agents/{agent_id}/channels/whatsapp")
+
+    async def whatsapp_qr(self, agent_id: str) -> tuple[bytes, str]:
+        """QR vem como imagem PNG binária, não JSON — não passa por _request/_safe_json."""
+        try:
+            response = await self._client.request("GET", f"/agents/{agent_id}/channels/whatsapp/qr")
+        except httpx.RequestError as exc:
+            raise VyaApiError(503, f"vya-workforce-api unreachable: {exc}") from exc
+        if response.status_code >= 400:
+            raise VyaApiError(response.status_code, _safe_json(response))
+        return response.content, response.headers.get("content-type", "image/png")
+
+    async def whatsapp_disconnect(self, agent_id: str, forget: bool = False) -> Any:
+        return await self._request(
+            "DELETE", f"/agents/{agent_id}/channels/whatsapp", params={"forget": forget}
+        )
+
+    # ── observability: logs / runs ──────────────────────────────────────────
+
+    async def get_logs(self, agent_id: str, source: str = "gateway", lines: int = 100) -> Any:
+        return await self._request(
+            "GET", f"/agents/{agent_id}/logs", params={"source": source, "lines": lines}
+        )
+
+    async def get_runs(self, agent_id: str, limit: int = 50) -> Any:
+        return await self._request("GET", f"/agents/{agent_id}/runs", params={"limit": limit})
+
 
 def _safe_json(response: httpx.Response) -> Any:
     try:

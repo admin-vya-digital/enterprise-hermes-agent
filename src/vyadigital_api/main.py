@@ -2,7 +2,18 @@ from fastapi import FastAPI
 
 from docker_api.clients.vya_client import get_vya_client
 from docker_api.core.config import get_settings
-from docker_api.routers import agents, calendar, contacts, followup, health, knowledge, memory, skills
+from docker_api.routers import (
+    agents,
+    calendar,
+    channels,
+    contacts,
+    followup,
+    health,
+    knowledge,
+    memory,
+    observability,
+    skills,
+)
 
 settings = get_settings()
 
@@ -16,6 +27,8 @@ app.include_router(calendar.router, prefix=settings.api_prefix)
 app.include_router(followup.router, prefix=settings.api_prefix)
 app.include_router(contacts.router, prefix=settings.api_prefix)
 app.include_router(memory.router, prefix=settings.api_prefix)
+app.include_router(channels.router, prefix=settings.api_prefix)
+app.include_router(observability.router, prefix=settings.api_prefix)
 
 
 @app.on_event("shutdown")
