@@ -5,7 +5,7 @@ services:
     # build: .
     container_name: hermes-interaction-api
     restart: unless-stopped
-    image: adminvyadigital/hermes-api:latest
+    image: adminvyadigital/hermes-api:0.0.2
     labels:
       - 'traefik.http.routers.hermes-interaction-api.rule=Host(`hermes-api.vya.digital`)'
       - 'traefik.http.routers.hermes-interaction-api.tls=true'
