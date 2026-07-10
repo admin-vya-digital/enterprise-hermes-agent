@@ -1,4 +1,6 @@
 #!/bin/sh
+# Criado em: 06/07/2026 12:00
+# Modificado em: 10/07/2026 21:30
 # Exporta cada Docker secret montado em /run/secrets/* como variável de
 # ambiente (nome do arquivo = nome da variável) antes de delegar para o
 # comando real do container.
@@ -25,6 +27,17 @@ if [ -n "$HERMES_HOME" ] && [ -d /app/skills ] && [ -d "$HERMES_HOME" ]; then
   elif [ ! -e "$HERMES_HOME/skills" ]; then
     ln -s /app/skills "$HERMES_HOME/skills"
   fi
+fi
+
+# O hermes-agent atual trata plugins como opt-in (lista plugins.enabled no
+# config.yaml do perfil). Sem o plugin dashboard_auth/basic habilitado, o
+# dashboard em host não-loopback bloqueia o login com "Sign-in unavailable".
+# Habilita de forma idempotente sempre que as credenciais de basic auth
+# estiverem presentes, para sobreviver a rebuilds e a perfis recriados.
+HERMES_BIN="${HERMES_BIN:-/app/hermes-agent/venv/bin/hermes}"
+if [ -n "$HERMES_DASHBOARD_BASIC_AUTH_USERNAME" ] && [ -x "$HERMES_BIN" ]; then
+  "$HERMES_BIN" plugins enable dashboard_auth/basic >/dev/null 2>&1 \
+    || echo "aviso: falha ao habilitar dashboard_auth/basic" >&2
 fi
 
 exec "$@"
