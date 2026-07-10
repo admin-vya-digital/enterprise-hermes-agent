@@ -75,3 +75,7 @@ wfdb01/config.yaml
 # hermes_agent runtime data (perfis de agentes, credenciais/conversas)
 src/hermes_agent/data/*
 !src/hermes_agent/data/**/.gitkeep
+
+# skills do hermes_agent: symlink para o volume vivo + backups locais
+src/hermes_agent/skills
+src/hermes_agent/skills.bak-*/
