@@ -24,8 +24,8 @@
   "python-envs.pythonProjects": [
     {
       "path": ".",
-      "envManager": "astral-sh.uv:uv",
-      "packageManager": "astral-sh.uv:uv"
+      "envManager": "ms-python.python:venv",
+      "packageManager": "ms-python.python:pip"
     }
   ],
   "flake8.path": [

@@ -24,9 +24,6 @@ make lint && make format
 # Encerrar sessão (valida integridade do projeto)
 make session-end
 
-# Carregar MCP servers
-make mcp
-
 # Limpar arquivos gerados
 make clean
 ```
@@ -63,6 +60,8 @@ Documentar atividades em `docs/SESSIONS/YYYY-MM-DD/`:
 - Seguir Conventional Commits: `feat`, `fix`, `docs`, `chore`, etc.
 - Rodar `make lint` antes de cada commit
 - Credenciais HTTP sempre via Python + requests (nunca curl com tokens)
+- Usar pasta tmp do projeto.
+- Não usar temp do Sistema Operacional
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
