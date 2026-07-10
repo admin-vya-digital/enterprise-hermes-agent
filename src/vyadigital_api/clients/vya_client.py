@@ -55,6 +55,78 @@ class VyaClient:
     async def delete_agent(self, agent_id: str) -> None:
         await self._request("DELETE", f"/agents/{agent_id}")
 
+    # ── skills ──────────────────────────────────────────────────────────────
+
+    async def get_skills(self, agent_id: str) -> Any:
+        return await self._request("GET", f"/agents/{agent_id}/skills")
+
+    async def set_skills(self, agent_id: str, payload: dict) -> Any:
+        return await self._request("POST", f"/agents/{agent_id}/skills", json=payload)
+
+    # ── knowledge ───────────────────────────────────────────────────────────
+
+    async def list_knowledge(self, agent_id: str) -> Any:
+        return await self._request("GET", f"/agents/{agent_id}/knowledge")
+
+    async def add_knowledge_url(self, agent_id: str, payload: dict) -> Any:
+        return await self._request("POST", f"/agents/{agent_id}/knowledge", json=payload)
+
+    async def upload_knowledge(self, agent_id: str, filename: str, content: bytes) -> Any:
+        files = {"file": (filename, content)}
+        return await self._request("POST", f"/agents/{agent_id}/knowledge/upload", files=files)
+
+    # ── calendar ────────────────────────────────────────────────────────────
+
+    async def calendar_status(self, agent_id: str) -> Any:
+        return await self._request("GET", f"/agents/{agent_id}/calendar/connect")
+
+    async def calendar_connect(self, agent_id: str, client_secret: dict) -> Any:
+        return await self._request("POST", f"/agents/{agent_id}/calendar/connect", json=client_secret)
+
+    async def calendar_auth_url(self, agent_id: str) -> Any:
+        return await self._request("GET", f"/agents/{agent_id}/calendar/connect/auth-url")
+
+    async def calendar_auth_code(self, agent_id: str, code: str) -> Any:
+        return await self._request(
+            "POST", f"/agents/{agent_id}/calendar/connect/auth-code", json={"code": code}
+        )
+
+    async def calendar_schedule(self, agent_id: str, payload: dict) -> Any:
+        return await self._request("POST", f"/agents/{agent_id}/calendar/schedule", json=payload)
+
+    # ── followup ────────────────────────────────────────────────────────────
+
+    async def list_followups(self, agent_id: str) -> Any:
+        return await self._request("GET", f"/agents/{agent_id}/followup")
+
+    async def create_followup(self, agent_id: str, payload: dict) -> Any:
+        return await self._request("POST", f"/agents/{agent_id}/followup", json=payload)
+
+    async def delete_followup(self, agent_id: str, job_id: str) -> None:
+        await self._request("DELETE", f"/agents/{agent_id}/followup/{job_id}")
+
+    # ── contacts ────────────────────────────────────────────────────────────
+
+    async def list_contacts(self, agent_id: str) -> Any:
+        return await self._request("GET", f"/agents/{agent_id}/contacts")
+
+    async def get_contact(self, agent_id: str, phone: str) -> Any:
+        return await self._request("GET", f"/agents/{agent_id}/contacts/{phone}")
+
+    async def upsert_contact(self, agent_id: str, phone: str, payload: dict) -> Any:
+        return await self._request("POST", f"/agents/{agent_id}/contacts/{phone}", json=payload)
+
+    async def delete_contact(self, agent_id: str, phone: str) -> None:
+        await self._request("DELETE", f"/agents/{agent_id}/contacts/{phone}")
+
+    # ── memory ──────────────────────────────────────────────────────────────
+
+    async def get_memory(self, agent_id: str, contact_uid: str) -> Any:
+        return await self._request("GET", f"/agents/{agent_id}/memory/{contact_uid}")
+
+    async def write_memory(self, agent_id: str, contact_uid: str, payload: dict) -> Any:
+        return await self._request("POST", f"/agents/{agent_id}/memory/{contact_uid}", json=payload)
+
 
 def _safe_json(response: httpx.Response) -> Any:
     try:
