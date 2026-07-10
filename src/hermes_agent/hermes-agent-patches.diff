@@ -494,41 +494,26 @@ diff --git a/plugins/platforms/whatsapp/adapter.py b/plugins/platforms/whatsapp/
              "bridge_script",
              str(self._DEFAULT_BRIDGE_DIR / "bridge.js"),
 
-diff --git a/plugins/dashboard_auth/basic/__init__.py b/plugins/dashboard_auth/basic/__init__.py
---- a/plugins/dashboard_auth/basic/__init__.py
-+++ b/plugins/dashboard_auth/basic/__init__.py
-@@ -204,6 +204,12 @@
-     name = "basic"
-     display_name = "Username & Password"
-     supports_password = True
-+    # Pure-password provider: start_login()/complete_login() below always
-+    # raise NotImplementedError (there's no OAuth redirect flow). Without
-+    # this flag, GET /auth/login?provider=basic slips past the
-+    # supports_session guard in routes.py and crashes with an unhandled 500
-+    # instead of a clean 404 — see docs/bugs/BUG_REPORT_DASHBOARD_AUTH_LOGIN_500.md.
-+    supports_session = False
+diff --git a/hermes_cli/dashboard_auth/routes.py b/hermes_cli/dashboard_auth/routes.py
+--- a/hermes_cli/dashboard_auth/routes.py
++++ b/hermes_cli/dashboard_auth/routes.py
+@@ -190,6 +190,17 @@
+     if not getattr(p, "supports_session", True):
+         raise HTTPException(
+             status_code=404,
+             detail=f"Provider does not support interactive login: {provider!r}",
+         )
++    # Fix local (Vya): providers password-only (ex.: dashboard_auth/basic)
++    # mantêm supports_session=True para o gate validar as sessões que eles
++    # emitem, mas não têm fluxo OAuth — start_login() levanta
++    # NotImplementedError e este endpoint respondia 500 (ver
++    # docs/bugs/BUG_REPORT_DASHBOARD_AUTH_LOGIN_500.md). O login por senha é
++    # via POST /auth/password-login; aqui devolvemos 404 limpo.
++    if getattr(p, "supports_password", False):
++        raise HTTPException(
++            status_code=404,
++            detail=f"Provider is password-only (no OAuth flow): {provider!r}",
++        )
  
-     def __init__(
-         self,
-
-diff --git a/hermes_cli/dashboard_auth/login_page.py b/hermes_cli/dashboard_auth/login_page.py
---- a/hermes_cli/dashboard_auth/login_page.py
-+++ b/hermes_cli/dashboard_auth/login_page.py
-@@ -465,7 +465,16 @@
-     validating ``next_path`` against the same-origin rules before we
-     emit it; we still HTML-escape it as defence in depth.
-     """
--    providers = list_session_providers()
-+    # Fix local (Vya): complementa o patch que marca BasicAuthProvider com
-+    # supports_session=False (fix do 500 em /auth/login) — sem isto a página
-+    # de login filtra o provider password-only e renderiza _EMPTY_HTML
-+    # ("Sign-in unavailable") mesmo com o provider registrado no gate.
-+    from hermes_cli.dashboard_auth.registry import list_providers as _all_providers
-+    providers = [
-+        p for p in _all_providers()
-+        if getattr(p, "supports_session", True)
-+        or getattr(p, "supports_password", False)
-+    ]
-     if not providers:
-         return _EMPTY_HTML
- 
+     try:
+         ls = p.start_login(redirect_uri=_redirect_uri(request))

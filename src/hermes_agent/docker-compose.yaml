@@ -7,7 +7,7 @@ services:
     # build:
     #   context: .
     #   target: api
-    image: adminvyadigital/hermes-agent-api:0.0.7
+    image: adminvyadigital/hermes-agent-api:0.0.8
     container_name: vya-workforce-api
     restart: unless-stopped
     env_file:
@@ -33,7 +33,7 @@ services:
     # build:
     #   context: .
     #   target: hermes-agent
-    image: adminvyadigital/hermes-agent:0.0.7
+    image: adminvyadigital/hermes-agent:0.0.8
     container_name: vya-workforce-dashboard
     restart: unless-stopped
     command:
@@ -87,7 +87,7 @@ services:
   # sendo subprocessos dinâmicos dentro do container "api" — não são
   # containers separados (ver README, seção "Gateways").
   gateway:
-    image: adminvyadigital/hermes-agent:0.0.7
+    image: adminvyadigital/hermes-agent:0.0.8
     container_name: vya-workforce-gateway
     restart: unless-stopped
     command:
