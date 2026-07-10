@@ -511,3 +511,24 @@ diff --git a/plugins/dashboard_auth/basic/__init__.py b/plugins/dashboard_auth/b
      def __init__(
          self,
 
+diff --git a/hermes_cli/dashboard_auth/login_page.py b/hermes_cli/dashboard_auth/login_page.py
+--- a/hermes_cli/dashboard_auth/login_page.py
++++ b/hermes_cli/dashboard_auth/login_page.py
+@@ -465,7 +465,16 @@
+     validating ``next_path`` against the same-origin rules before we
+     emit it; we still HTML-escape it as defence in depth.
+     """
+-    providers = list_session_providers()
++    # Fix local (Vya): complementa o patch que marca BasicAuthProvider com
++    # supports_session=False (fix do 500 em /auth/login) — sem isto a página
++    # de login filtra o provider password-only e renderiza _EMPTY_HTML
++    # ("Sign-in unavailable") mesmo com o provider registrado no gate.
++    from hermes_cli.dashboard_auth.registry import list_providers as _all_providers
++    providers = [
++        p for p in _all_providers()
++        if getattr(p, "supports_session", True)
++        or getattr(p, "supports_password", False)
++    ]
+     if not providers:
+         return _EMPTY_HTML
+ 
