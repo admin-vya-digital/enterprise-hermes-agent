@@ -17,3 +17,12 @@ agent:
 
 toolsets:
   - hermes-cli
+
+# Memória persistente por contato (MEMORY.md/USER.md em
+# memories/contacts/<contato>/, isolada por contact_user_id — ver
+# tools/memory_tool.py). Desligada por padrão no hermes-agent upstream;
+# ligamos aqui para que todo agente novo já nasça com memória de longo
+# prazo por tenant/contato.
+memory:
+  memory_enabled: true
+  user_profile_enabled: true

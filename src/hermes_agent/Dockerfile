@@ -84,9 +84,12 @@ COPY entrypoint.sh ./
 RUN chmod +x entrypoint.sh
 
 # venv do hermes (reusado pelo target "api" para instalar suas dependências)
+# extra "messaging" traz aiohttp — exigido pelo adapter do WhatsApp
+# (plugins/platforms/whatsapp/adapter.py) em tempo de conexão; sem ele o
+# canal WhatsApp nunca conecta ("ModuleNotFoundError: No module named 'aiohttp'").
 RUN python -m venv hermes-agent/venv \
     && hermes-agent/venv/bin/pip install --no-cache-dir --upgrade pip \
-    && hermes-agent/venv/bin/pip install --no-cache-dir -e ./hermes-agent
+    && hermes-agent/venv/bin/pip install --no-cache-dir -e "./hermes-agent[messaging]"
 
 # bridge do WhatsApp (deps node ficam na imagem)
 RUN cd hermes-agent/scripts/whatsapp-bridge && npm install --no-audit --no-fund

@@ -185,6 +185,16 @@ def update_profile(
         from provision import _provider_env_key
         key_name = _provider_env_key(provider or env.get("AGENT_PROVIDER", "anthropic"))
         env[key_name] = provider_api_key
+    elif provider is not None:
+        # Provider mudou sem key nova — herdar do .env global, senão o
+        # perfil fica com config.yaml apontando pra um provider sem
+        # credencial nenhuma (gateway falha com "Unknown provider").
+        from provision import _provider_env_key, _global_env_keys
+        key_name = _provider_env_key(provider)
+        if key_name not in env:
+            global_env = _global_env_keys()
+            if key_name in global_env:
+                env[key_name] = global_env[key_name]
     if whatsapp_mode is not None:
         env["WHATSAPP_MODE"] = whatsapp_mode
     if whatsapp_owner_number is not None:
@@ -234,11 +244,14 @@ def inject_knowledge_rule(d: Path, filename: str) -> None:
     if not files:
         return
 
-    file_list = "\n".join(f"- `{f}`" for f in files)
+    # Caminho absoluto — o processo do gateway não roda com cwd na pasta do
+    # perfil (start_gateway usa a pasta do bridge do WhatsApp como cwd), então
+    # um caminho relativo tipo `knowledge/arquivo.md` não resolve.
+    file_list = "\n".join(f"- `{kdir / f}`" for f in files)
     block = (
         "Antes de responder perguntas sobre produtos, serviços, procedimentos ou "
-        "qualquer informação específica do negócio, consulte os arquivos em `knowledge/` "
-        "deste perfil.\n\n"
+        "qualquer informação específica do negócio, consulte os arquivos abaixo "
+        "(caminhos absolutos).\n\n"
         f"Arquivos disponíveis:\n{file_list}"
     )
 
