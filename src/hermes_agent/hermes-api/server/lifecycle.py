@@ -20,6 +20,20 @@ _KNOWLEDGE_MARKER_END = "## [INSTRUÇÕES ADICIONAIS]"
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
 
+def _read_config_provider(d: Path) -> str | None:
+    """Lê o `provider` atual do config.yaml do perfil (fonte de verdade —
+    não confundir com AGENT_PROVIDER, que nunca é gravado no .env)."""
+    cfg_file = d / "config.yaml"
+    if not cfg_file.exists():
+        return None
+    import yaml
+    try:
+        cfg = yaml.safe_load(cfg_file.read_text()) or {}
+    except Exception:
+        return None
+    return cfg.get("provider")
+
+
 # ─── Escrita atômica de .env ──────────────────────────────────────────────────
 
 def _write_env(d: Path, env: dict[str, str]) -> None:
@@ -183,7 +197,8 @@ def update_profile(
         env["AGENT_TEMPERATURE"] = str(temperature)
     if provider_api_key is not None:
         from provision import _provider_env_key
-        key_name = _provider_env_key(provider or env.get("AGENT_PROVIDER", "anthropic"))
+        current_provider = provider or _read_config_provider(d) or "anthropic"
+        key_name = _provider_env_key(current_provider)
         env[key_name] = provider_api_key
     elif provider is not None:
         # Provider mudou sem key nova — herdar do .env global, senão o
