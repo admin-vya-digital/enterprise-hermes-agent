@@ -384,3 +384,12 @@ def start_gateway(d: Path) -> int | None:
     except Exception:
         pass
     return proc.pid
+
+
+def restart_gateway(d: Path) -> int | None:
+    """Reinicia só o gateway do perfil (stop_gateway + start_gateway), sem
+    mexer no bridge/sessão WhatsApp. Mesmo par usado por update_profile()
+    (lifecycle.py) para aplicar mudanças de persona/config com o gateway no
+    ar — aqui exposto direto para o operador pedir um restart avulso."""
+    stop_gateway(d)
+    return start_gateway(d)

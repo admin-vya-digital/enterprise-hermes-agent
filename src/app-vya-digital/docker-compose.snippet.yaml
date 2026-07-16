@@ -1,0 +1,46 @@
+# Não é um docker-compose.yaml standalone — é um SERVIÇO A MAIS para colar
+# dentro de src/hermes_agent/docker-compose.yaml (mesmo arquivo que já
+# monta ./data/profiles em api/dashboard/gateway). Motivo de não ser um
+# compose separado: o volume de profiles é um bind mount (./data/profiles),
+# não um volume nomeado — só um container na MESMA stack, no mesmo host,
+# enxerga o mesmo ./data/profiles por caminho relativo. Ver
+# ARCHITECTURE_NOTES.md, seção "Deploy".
+
+  app-vya-digital:
+    build:
+      context: ../app-vya-digital
+    image: adminvyadigital/app-vya-digital:0.0.1
+    container_name: app-vya-digital
+    restart: unless-stopped
+    environment:
+      # /app/profiles é o mount point compartilhado (mesmo bind ./data/profiles
+      # dos outros 3 serviços deste arquivo) — HERMES_HOME_ROOT + "/profiles"
+      # dá /app/profiles, igual ao HERMES_HOME dos outros serviços.
+      - HERMES_HOME_ROOT=/app
+      - HERMES_DASH_PORT=9119
+      # vyadigital_api (container hermes-interaction-api, outra stack/rede
+      # app-network) — usado só para o canal WhatsApp (connect/disconnect/QR).
+      - VYA_API_BASE_URL=http://hermes-interaction-api:8000
+      - VYA_API_PREFIX=/api/v1
+      # Auth: mesmo padrão Authelia forward-auth do cr:ux original — ajustar
+      # se a empresa preferir outro mecanismo de auth na frente deste serviço.
+      - VYA_AGENT_AUTH_MODE=proxy
+      - VYA_AGENT_PROXY_SECRET=${APP_VYA_DIGITAL_PROXY_SECRET:?defina no .env}
+      - AUTHELIA_LOGOUT_URL=${AUTHELIA_LOGOUT_URL:-}
+      - TZ=America/Sao_Paulo
+    secrets:
+      - VYA_API_KEY
+    labels:
+      - 'traefik.http.routers.app-vya-digital.rule=Host(`dash.vya.digital`)'
+      - 'traefik.http.routers.app-vya-digital.tls=true'
+      - 'traefik.http.routers.app-vya-digital.entrypoints=websecure'
+      - 'traefik.http.routers.app-vya-digital.tls.certresolver=lets-encrypt'
+      - "traefik.http.services.app-vya-digital.loadbalancer.server.port=9119"
+    volumes:
+      # Read-write (não :ro): produto.yaml, appointments.db e leads.db são
+      # escritos por este dashboard (mesmo padrão do crux original).
+      - ./data/profiles:/app/profiles
+    depends_on:
+      - api
+    networks:
+      - app-network
