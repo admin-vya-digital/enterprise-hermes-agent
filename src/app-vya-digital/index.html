@@ -682,8 +682,23 @@ const S = {
 };
 
 // ── API ───────────────────────────────────────────────────────────────────────
+// Todo path passado pra cá é montado com valores vindos do servidor
+// (profile.id, chat_id etc.) — nunca deveria apontar pra fora da própria
+// origem. Valida explicitamente antes de qualquer fetch: resolve contra
+// location.origin e recusa qualquer coisa que não seja same-origin e sob
+// /api/, fechando a possibilidade de um valor malicioso virar uma
+// requisição pra host arbitrário. Toda chamada de fetch() no arquivo passa
+// por aqui — não chamar fetch() direto em código novo.
+function _apiUrl(path) {
+  const url = new URL(path, window.location.origin);
+  if (url.origin !== window.location.origin || !url.pathname.startsWith('/api/')) {
+    throw new Error('Caminho de API inválido');
+  }
+  return url.toString();
+}
+
 async function api(path, opts = {}) {
-  const r = await fetch(path, opts);
+  const r = await fetch(_apiUrl(path), opts);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();
 }
@@ -756,7 +771,7 @@ function avatarImgHtml(chatId, name) {
   const hit = _avatarCache.get(key);
   if (hit) return `<span class="av-wrap" data-avkey="${escAttr(key)}">${hit.url ? _AV_IMG(hit.url) : letter}</span>`;
   _avatarCache.set(key, { url: null });          // marca a tentativa única
-  fetch(`/api/profiles/${S.profile.id}/contact/avatar?chat_id=${encodeURIComponent(chatId)}`)
+  fetch(_apiUrl(`/api/profiles/${S.profile.id}/contact/avatar?chat_id=${encodeURIComponent(chatId)}`))
     .then(r => (r.ok && (r.headers.get('content-type') || '').startsWith('image')) ? r.blob() : null)
     .then(b => {
       if (!b || !b.size) return;
@@ -1402,7 +1417,13 @@ function flashChip(el, msg) {
   el.textContent = msg; el.style.color = 'var(--green, #3fb950)';
   setTimeout(() => { el.textContent = prevText; el.style.color = prevColor; if (prevTitle) el.setAttribute('title', prevTitle); }, 1000);
 }
-function escAttr(s) { return String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+function escAttr(s) {
+  // Barra invertida PRIMEIRO: escapar aspa sem escapar \ antes permite que um
+  // valor terminando em "\" neutralize o escape da aspa seguinte (ex.: nome
+  // de contato do WhatsApp terminando em "\" + conteúdo malicioso quebraria
+  // o literal de string JS dentro do onclick="...('${escAttr(x)}')").
+  return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
 
 async function selectConv(i) {
   const conv = S.filteredConvs[i];
@@ -1773,7 +1794,7 @@ async function insertSoulTemplate(key) {
   if (!ta) return;
   if (ta.value.trim() && !confirm('Substituir o conteúdo atual pelo padrão?')) return;
   try {
-    const r = await fetch(`/api/base/${key}`);
+    const r = await fetch(_apiUrl(`/api/base/${key}`));
     if (!r.ok) throw new Error('not ok');
     const d = await r.json();
     ta.value = d.content || (key === 'produto' ? PRODUTO_TEMPLATE : SOUL_TEMPLATE);
@@ -2104,7 +2125,7 @@ function prodDelFact(i){ S.produtoCfg.conhecimento.splice(i,1); prodMark(); prod
 async function prodSave(){
   const btn=document.getElementById('prodSaveBtn'); if(btn){ btn.disabled=true; btn.textContent='Salvando…'; }
   try{
-    const r=await fetch(`/api/profiles/${S.profile.id}/produto-config`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({config:S.produtoCfg})});
+    const r=await fetch(_apiUrl(`/api/profiles/${S.profile.id}/produto-config`),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({config:S.produtoCfg})});
     const j=await r.json().catch(()=>({}));
     if(!r.ok){ toast((j.errors&&j.errors[0])||'Erro de validação','err'); return; }
     S.produtoCfg=j.config||S.produtoCfg;
@@ -2150,7 +2171,7 @@ function cronDateTime(val) {
 async function deleteCronJob(jobId) {
   if (!confirm('Excluir este cron job?')) return;
   try {
-    const r = await fetch(`/api/profiles/${S.profile.id}/cron/${encodeURIComponent(jobId)}`, { method: 'DELETE' });
+    const r = await fetch(_apiUrl(`/api/profiles/${S.profile.id}/cron/${encodeURIComponent(jobId)}`), { method: 'DELETE' });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     toast('Cron job excluído');
     if (S.tab === 'agenda') renderAgenda();
@@ -2996,7 +3017,7 @@ async function deleteContact(id, isGroup, name) {
     : `o contato "${liveName || id}"`;
   if (!confirm(`Excluir do banco ${what}?\n\nApaga sessões e mensagens deste contato no state.db (backup automático é criado antes), além do lead (Kanban) e dos lembretes (cron) dele. Agendamentos NÃO são apagados. O gateway deste perfil reinicia (~7s) para limpar o cache de sessão — necessário para o contato não ficar com histórico corrompido. Não afeta as credenciais do WhatsApp nem a memória.`)) return;
   try {
-    const r = await fetch(`/api/profiles/${S.profile.id}/contact/delete`, {
+    const r = await fetch(_apiUrl(`/api/profiles/${S.profile.id}/contact/delete`), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contact_id: id, is_group: isGroup })
     });
@@ -3223,7 +3244,7 @@ function showQrImage(profileId) {
   const area = document.getElementById('qrArea');
   if (!area || S.profile?.id !== profileId) return;
   const url = `/api/profiles/${profileId}/qr?t=${Date.now()}`;
-  fetch(url).then(r => {
+  fetch(_apiUrl(url)).then(r => {
     if (!r.ok) return;
     area.innerHTML = `
       <img class="qr-img" src="${url}" alt="QR Code" style="display:block">

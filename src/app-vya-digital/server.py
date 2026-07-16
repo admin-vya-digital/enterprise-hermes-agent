@@ -140,9 +140,20 @@ def _load_contacts(d: Path) -> dict[str, str]:
 
 
 def _safe_profile_path(profile_id: str) -> Path | None:
+    # SAFE_ID (\w e -, sem / nem ..) já impede travessia de diretório, mas o
+    # CodeQL não reconhece checagem por regex como sanitizador de path — todo
+    # `d / "algo"` feito a partir do valor de retorno aparecia como "path
+    # depends on a user-provided value" (dezenas de alertas, uma única causa
+    # raiz). Reforça com contenção explícita via caminho resolvido +
+    # relative_to(), padrão que a análise de path-injection reconhece.
     if not SAFE_ID.match(profile_id):
         return None
-    d = HERMES_ROOT / profile_id
+    root = HERMES_ROOT.resolve()
+    d = (root / profile_id).resolve()
+    try:
+        d.relative_to(root)
+    except ValueError:
+        return None
     if not d.is_dir():
         return None
     return d
