@@ -49,9 +49,10 @@ LOG_SOURCES = {"gateway": "gateway.log", "bridge": "bridge.log",
 # PID isolado), então "vivo" não pode ser checado por sinal local — só pelo
 # que o próprio gateway escreve em gateway_state.json (arquivo no volume
 # compartilhado, comum aos dois forks do hermes-agent) ou pela API.
-# TODO(verificar): confirmar o valor exato que gateway_state.json usa pra
-# "rodando" no fork da empresa antes de confiar neste campo em produção.
-
+#
+# SYNC: cópia de hermes_fs.gateway_state() em
+# src/hermes_agent/hermes-api/server/hermes_fs.py — manter em sincronia
+# manualmente (build context isolado, sem módulo compartilhado).
 def _gateway_state(d: Path) -> dict:
     f = d / "gateway_state.json"
     if not f.exists():
@@ -62,9 +63,15 @@ def _gateway_state(d: Path) -> dict:
         return {}
 
 
+# Diverge deliberadamente de hermes_fs.profile_status(): o original checa
+# pid_alive(pid) porque roda no mesmo namespace de PID do gateway; aqui isso
+# sempre daria falso (PID de outro container), então o único sinal viável é
+# gateway_state. Valores confirmados nos escritores reais (gateway/status.py,
+# hermes_cli/container_boot.py, hermes_cli/web_server.py): "starting",
+# "running", "stopped" — "online"/"active" nunca ocorrem, removidos do check.
 def _profile_status(d: Path) -> dict:
     gstate = _gateway_state(d)
-    online = str(gstate.get("gateway_state", "")).lower() in ("running", "online", "active")
+    online = str(gstate.get("gateway_state", "")).lower() == "running"
     wa = gstate.get("platforms", {}).get("whatsapp", {})
     return {
         "online": online,
@@ -138,6 +145,10 @@ def _load_contacts(d: Path) -> dict[str, str]:
         return {}
 
 
+# SYNC: versão endurecida de hermes_fs.safe_profile_path() (mesma pasta
+# fonte listada no bug report em docs/bugs/). O original ainda usa só
+# `HERMES_ROOT / profile_id` sem resolve()+relative_to() — esse hardening
+# não foi retroportado para lá; ver docs/bugs/2026-07-22_duplicidade-app-vya-digital.md.
 def _safe_profile_path(profile_id: str) -> Path | None:
     # SAFE_ID (\w e -, sem / nem ..) já impede travessia de diretório, mas o
     # CodeQL não reconhece checagem por regex como sanitizador de path — todo
@@ -158,6 +169,8 @@ def _safe_profile_path(profile_id: str) -> Path | None:
     return d
 
 
+# SYNC: mesmo padrão write-tmp-then-replace usado em hermes_fs.py
+# (_write_env, locked_json) — implementação paralela, não compartilhada.
 def _write_atomic(path: Path, content: str) -> None:
     tmp = path.with_suffix(".tmp")
     tmp.write_text(content, encoding="utf-8")
@@ -816,14 +829,21 @@ async def handle_messages(req: web.Request) -> web.Response:
     return web.json_response(msgs)
 
 
+# SYNC: leitura equivalente a hermes_fs.read_soul()/read_produto() (idem
+# _gateway_state acima) — implementação local porque o build context deste
+# serviço não inclui hermes_fs.py.
+def _read_base_file(d: Path, filename: str) -> str:
+    f = d / filename
+    return f.read_text("utf-8") if f.exists() else ""
+
+
 # ─── /api/profiles/{id}/soul ──────────────────────────────────────────────────
 
 async def handle_get_soul(req: web.Request) -> web.Response:
     d = _safe_profile_path(req.match_info["profile_id"])
     if not d:
         raise web.HTTPNotFound()
-    f = d / "SOUL.md"
-    return web.json_response({"content": f.read_text("utf-8") if f.exists() else ""})
+    return web.json_response({"content": _read_base_file(d, "SOUL.md")})
 
 
 async def handle_set_soul(req: web.Request) -> web.Response:
@@ -841,8 +861,7 @@ async def handle_get_produto(req: web.Request) -> web.Response:
     d = _safe_profile_path(req.match_info["profile_id"])
     if not d:
         raise web.HTTPNotFound()
-    f = d / "produto.md"
-    return web.json_response({"content": f.read_text("utf-8") if f.exists() else ""})
+    return web.json_response({"content": _read_base_file(d, "produto.md")})
 
 
 async def handle_set_produto(req: web.Request) -> web.Response:
