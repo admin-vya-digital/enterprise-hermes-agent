@@ -60,8 +60,6 @@ logs/*
 # Infrastructure directories
 tmp/*
 !tmp/README.md
-!tmp/projeto-vya/
-!tmp/projeto-vya/**
 .memory/*
 !.memory/README.md
 .session-index/*

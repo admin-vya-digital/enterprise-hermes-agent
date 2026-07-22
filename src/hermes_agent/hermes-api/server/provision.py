@@ -5,8 +5,6 @@ SEM invocar LLM, agente Root ou qualquer canal de conversa.
 Toda operação é filesystem + processos.
 """
 
-import os
-import re
 import shutil
 import time
 from pathlib import Path
@@ -172,11 +170,11 @@ def create_profile(
 
     # ── Phase 2: .env do perfil ────────────────────────────────────────────────
     env_lines = [
-        f"# =====================================================================",
+        "# =====================================================================",
         f"# PERFIL: {profile_id}",
-        f"# Criado por: vya-workforce-api",
+        "# Criado por: vya-workforce-api",
         f"# Data: {time.strftime('%Y-%m-%d %H:%M')}",
-        f"# =====================================================================",
+        "# =====================================================================",
         f"PROFILE_ID={profile_id}",
         f"BRIDGE_PORT={bridge_p}",
         f"GATEWAY_PORT={gateway_p}",

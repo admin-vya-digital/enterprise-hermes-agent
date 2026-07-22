@@ -94,7 +94,8 @@ def load(d: Path) -> dict:
         for s in data.get("servicos") or []:
             c = (s.get("categoria") or "").strip()
             if c and c.lower() not in seen:
-                seen.add(c.lower()); cats.append(c)
+                seen.add(c.lower())
+                cats.append(c)
         data["categorias"] = cats
     return data
 

@@ -14,7 +14,6 @@ com o vya-workforce-api diretamente.
 """
 
 import os
-from functools import lru_cache
 from typing import Any
 
 import aiohttp

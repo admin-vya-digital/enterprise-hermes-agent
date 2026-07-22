@@ -28,9 +28,9 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Tuple
+from typing import List, Tuple
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -302,7 +302,7 @@ def calculate_relevance(result: SearchResult, keywords: List[Tuple[str, float, s
             branch_matches = sum(1 for kw in branch_keywords if kw in title_lower)
             if branch_matches > 0:
                 score += 5
-                reasons.append(f"Matches branch context")
+                reasons.append("Matches branch context")
 
     # Ensure score is in 0-100 range
     score = min(100, max(0, score))

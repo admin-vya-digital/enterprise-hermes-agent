@@ -449,7 +449,7 @@ def cmd_status():
     print(f"Data atual:     {current_date}")
 
     if is_orphan:
-        print(f"⚠️  Status:        ÓRFÃ (sessão de outro dia)")
+        print("⚠️  Status:        ÓRFÃ (sessão de outro dia)")
     else:
         print(f"✅ Status:        {state.get('status', 'unknown').upper()}")
 

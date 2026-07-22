@@ -114,7 +114,7 @@ try:
 except Exception:
     pass
 
-from tui_gateway.render import make_stream_renderer, render_diff, render_message
+from tui_gateway.render import make_stream_renderer, render_diff, render_message  # noqa: E402
 
 _sessions: dict[str, dict] = {}
 _methods: dict[str, callable] = {}
@@ -1462,7 +1462,9 @@ def _sync_session_key_after_compress(
 
 
 def _get_usage(agent) -> dict:
-    g = lambda k, fb=None: getattr(agent, k, 0) or (getattr(agent, fb, 0) if fb else 0)
+    def g(k, fb=None):
+        return getattr(agent, k, 0) or (getattr(agent, fb, 0) if fb else 0)
+
     usage = {
         "model": getattr(agent, "model", "") or "",
         "input": g("session_input_tokens", "session_prompt_tokens"),
@@ -2491,7 +2493,8 @@ def _resolve_checkpoint_hash(mgr, cwd: str, ref: str) -> str:
 
 def _enrich_with_attached_images(user_text: str, image_paths: list[str]) -> str:
     """Pre-analyze attached images via vision and prepend descriptions to user text."""
-    import asyncio, json as _json
+    import asyncio
+    import json as _json
     from tools.vision_tools import vision_analyze_tool
 
     prompt = (
