@@ -3,6 +3,7 @@ hermes_fs.py — helpers de leitura do filesystem do Hermes.
 Portado de ~/Code/hermes-dash/server.py para manter o repo auto-contido.
 """
 
+import contextlib
 import fcntl
 import json
 import os
@@ -35,8 +36,6 @@ SAFE_ID = re.compile(r"^[\w\-]+$")
 #       data.append(novo_item)
 #   # ao sair do `with`, o novo valor de `data` é gravado atomicamente
 #   # e o lock só é liberado depois — ninguém mais entra no meio.
-
-import contextlib
 
 
 @contextlib.contextmanager

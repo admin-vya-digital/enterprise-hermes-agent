@@ -1,8 +1,0 @@
-name: whatsapp-mixed
-version: "1.0"
-description: |
-  Roteamento para WHATSAPP_MODE=mixed: mesmo número atende o dono (assistente
-  pessoal, self-chat) e clientes (bot) ao mesmo tempo. Detecta mensagens
-  manuais do dono para um cliente e silencia o bot naquela conversa por 10min
-  (janela deslizante), enfileirando mensagens do cliente nesse intervalo para
-  responder quando o silêncio expirar. No-op se WHATSAPP_MODE != "mixed".

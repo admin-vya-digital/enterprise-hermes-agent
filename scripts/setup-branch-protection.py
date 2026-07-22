@@ -34,7 +34,6 @@ import argparse
 import os
 import sys
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 try:
@@ -181,7 +180,7 @@ def setup_branch_protection(
     payload = build_protection_payload(config)
 
     if dry_run:
-        console.print(f"\n[yellow]🔍 DRY RUN - Configuração que seria aplicada:[/yellow]")
+        console.print("\n[yellow]🔍 DRY RUN - Configuração que seria aplicada:[/yellow]")
         console.print(payload)
         return True
 
@@ -196,11 +195,11 @@ def setup_branch_protection(
             sig_url = f"{url}/required_signatures"
             sig_response = requests.post(sig_url, headers=headers)
             if sig_response.status_code in (200, 201):
-                console.print(f"[green]✅ Commits assinados habilitados[/green]")
+                console.print("[green]✅ Commits assinados habilitados[/green]")
 
         return True
     else:
-        console.print(f"[red]❌ Erro ao aplicar proteção:[/red]")
+        console.print("[red]❌ Erro ao aplicar proteção:[/red]")
         console.print(f"   Status: {response.status_code}")
         console.print(f"   Resposta: {response.text}")
         return False
@@ -282,7 +281,7 @@ def main():
     config = PROTECTION_LEVELS[args.level]
 
     # Mostrar resumo
-    console.print(f"\n[bold]Configurando proteção para:[/bold]")
+    console.print("\n[bold]Configurando proteção para:[/bold]")
     console.print(f"  Repository: {owner}/{repo}")
     console.print(f"  Branch: {args.branch}")
     console.print(f"  Nível: {args.level}")

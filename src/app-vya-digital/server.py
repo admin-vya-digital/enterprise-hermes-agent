@@ -27,7 +27,6 @@ from collections import defaultdict, deque
 from datetime import datetime, timezone
 from pathlib import Path
 
-import aiohttp
 from aiohttp import web
 
 _LIB_DIR = Path(__file__).resolve().parent / "lib"
@@ -1426,13 +1425,13 @@ async def handle_contact_memory(req: web.Request) -> web.Response:
 # usar acesso de infra (não pelo dashboard).
 
 # ─── /api/profiles/{id}/group/members ─────────────────────────────────────────
-# GAP: dependia de chamar o bridge (Node/Baileys) em http://127.0.0.1:{port} no
+# GAP: dependia de chamar o bridge (Node/Baileys) em http://<localhost>:{port} no
 # mesmo container. Aqui o bridge roda dentro do container `vya-workforce-api` —
 # não alcançável deste container. Não portado; ver ARCHITECTURE_NOTES.md.
 
 # ─── /api/profiles/{id}/contact/avatar ────────────────────────────────────────
 # GAP: mesmo motivo do group/members acima — dependia do bridge em
-# 127.0.0.1:{port}/avatar/{id}. Não portado.
+# <localhost>:{port}/avatar/{id}. Não portado.
 
 # ─── /api/profiles/{id}/contact/delete ────────────────────────────────────────
 
