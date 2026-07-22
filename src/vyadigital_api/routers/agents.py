@@ -48,3 +48,11 @@ async def delete_agent(agent_id: str, client: VyaClient = Depends(get_vya_client
         await client.delete_agent(agent_id)
     except VyaApiError as exc:
         _raise_upstream(exc)
+
+
+@router.post("/{agent_id}/restart")
+async def restart_agent(agent_id: str, client: VyaClient = Depends(get_vya_client)):
+    try:
+        return await client.restart_agent(agent_id)
+    except VyaApiError as exc:
+        _raise_upstream(exc)

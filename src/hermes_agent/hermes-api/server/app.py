@@ -673,6 +673,21 @@ def remove_agent(agent_id: str, _: AuthDep):
         raise HTTPException(404, str(e))
 
 
+@app.post("/agents/{agent_id}/restart", tags=["agents"], summary="Reiniciar gateway do agente")
+def restart_agent(agent_id: str, _: AuthDep):
+    """
+    Reinicia só o processo do gateway (SIGTERM → SIGKILL se necessário, depois
+    sobe de novo) — não mexe no bridge nem na sessão WhatsApp pareada. Mesmo
+    par stop_gateway/start_gateway que `update_profile` já usa internamente
+    para aplicar mudanças de persona/config com o gateway no ar.
+    """
+    d = fs.safe_profile_path(agent_id)
+    if not d:
+        raise HTTPException(404, f"Agente '{agent_id}' não encontrado.")
+    pid = fs.restart_gateway(d)
+    return {"agent_id": agent_id, "respawned": pid is not None, "gateway_pid": pid}
+
+
 # ── /knowledge ────────────────────────────────────────────────────────────────
 
 @app.get("/agents/{agent_id}/knowledge", tags=["knowledge"], summary="Listar base de conhecimento")

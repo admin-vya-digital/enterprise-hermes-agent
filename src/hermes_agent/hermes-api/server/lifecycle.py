@@ -20,6 +20,20 @@ _KNOWLEDGE_MARKER_END = "## [INSTRUÇÕES ADICIONAIS]"
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
 
+def _read_config_provider(d: Path) -> str | None:
+    """Lê o `provider` atual do config.yaml do perfil (fonte de verdade —
+    não confundir com AGENT_PROVIDER, que nunca é gravado no .env)."""
+    cfg_file = d / "config.yaml"
+    if not cfg_file.exists():
+        return None
+    import yaml
+    try:
+        cfg = yaml.safe_load(cfg_file.read_text()) or {}
+    except Exception:
+        return None
+    return cfg.get("provider")
+
+
 # ─── Escrita atômica de .env ──────────────────────────────────────────────────
 
 def _write_env(d: Path, env: dict[str, str]) -> None:
@@ -183,8 +197,19 @@ def update_profile(
         env["AGENT_TEMPERATURE"] = str(temperature)
     if provider_api_key is not None:
         from provision import _provider_env_key
-        key_name = _provider_env_key(provider or env.get("AGENT_PROVIDER", "anthropic"))
+        current_provider = provider or _read_config_provider(d) or "anthropic"
+        key_name = _provider_env_key(current_provider)
         env[key_name] = provider_api_key
+    elif provider is not None:
+        # Provider mudou sem key nova — herdar do .env global, senão o
+        # perfil fica com config.yaml apontando pra um provider sem
+        # credencial nenhuma (gateway falha com "Unknown provider").
+        from provision import _provider_env_key, _global_env_keys
+        key_name = _provider_env_key(provider)
+        if key_name not in env:
+            global_env = _global_env_keys()
+            if key_name in global_env:
+                env[key_name] = global_env[key_name]
     if whatsapp_mode is not None:
         env["WHATSAPP_MODE"] = whatsapp_mode
     if whatsapp_owner_number is not None:
@@ -234,11 +259,14 @@ def inject_knowledge_rule(d: Path, filename: str) -> None:
     if not files:
         return
 
-    file_list = "\n".join(f"- `{f}`" for f in files)
+    # Caminho absoluto — o processo do gateway não roda com cwd na pasta do
+    # perfil (start_gateway usa a pasta do bridge do WhatsApp como cwd), então
+    # um caminho relativo tipo `knowledge/arquivo.md` não resolve.
+    file_list = "\n".join(f"- `{kdir / f}`" for f in files)
     block = (
         "Antes de responder perguntas sobre produtos, serviços, procedimentos ou "
-        "qualquer informação específica do negócio, consulte os arquivos em `knowledge/` "
-        "deste perfil.\n\n"
+        "qualquer informação específica do negócio, consulte os arquivos abaixo "
+        "(caminhos absolutos).\n\n"
         f"Arquivos disponíveis:\n{file_list}"
     )
 

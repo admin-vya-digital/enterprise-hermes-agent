@@ -55,6 +55,9 @@ class VyaClient:
     async def delete_agent(self, agent_id: str) -> None:
         await self._request("DELETE", f"/agents/{agent_id}")
 
+    async def restart_agent(self, agent_id: str) -> Any:
+        return await self._request("POST", f"/agents/{agent_id}/restart")
+
     # ── skills ──────────────────────────────────────────────────────────────
 
     async def get_skills(self, agent_id: str) -> Any:

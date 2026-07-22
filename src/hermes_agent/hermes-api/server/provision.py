@@ -191,6 +191,10 @@ def create_profile(
         "WHATSAPP_ALLOWED_USERS=*",
         "WHATSAPP_DM_POLICY=open",
         "WHATSAPP_GROUP_POLICY=open",
+        # Política 'open' exige este opt-in explícito, senão o gateway se
+        # recusa a subir ("Refusing to start: ... open policy without
+        # allow-all opt-in").
+        "WHATSAPP_ALLOW_ALL_USERS=true",
         f"WHATSAPP_OWNER_NUMBER={whatsapp_owner_number}",
         "",
         "# GATEWAY",
@@ -215,14 +219,18 @@ def create_profile(
         f"AGENT_INITIAL_PROMPT={initial_prompt}",
     ]
 
-    # Gravar chave de API do provedor escolhido
+    # Gravar chave de API do provedor escolhido — se não vier no request,
+    # herdar do .env global (senão o perfil nasce sem credencial nenhuma
+    # para o provider configurado).
+    provider_key_name = _provider_env_key(provider)
     if provider_api_key:
-        key_name = _provider_env_key(provider)
-        env_lines.append(f"{key_name}={provider_api_key}")
+        env_lines.append(f"{provider_key_name}={provider_api_key}")
+    elif provider_key_name in global_env:
+        env_lines.append(f"{provider_key_name}={global_env[provider_key_name]}")
 
-    # Propagar outras chaves do ambiente global (não sobrescrever a do provider)
+    # Propagar outras chaves do ambiente global (não duplicar a do provider)
     for key in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY"):
-        if key in global_env and key != _provider_env_key(provider):
+        if key in global_env and key != provider_key_name:
             env_lines.append(f"{key}={global_env[key]}")
 
     (d / ".env").write_text("\n".join(env_lines) + "\n", encoding="utf-8")
